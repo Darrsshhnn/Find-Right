@@ -1,0 +1,10 @@
+{
+  "description": "Streamline data management by consolidating multiple data sources into a single, user-friendly interface, enhancing productivity for teams.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
