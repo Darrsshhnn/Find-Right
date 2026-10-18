@@ -1,14 +1,32 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
+import { projectId, publicAnonKey } from "../utils/supabase/info";
 
 type View = "home" | "projects" | "workspace" | "progression" | "profile" | "settings";
 type SettingsTab = "profile" | "reputation" | "ai" | "privacy";
 type AiChoice = "No AI" | "AI ideation" | "AI execution";
-type EntryStage = "landing" | "role" | "auth" | "onboarding" | "app";
+type EntryStage = "landing" | "role" | "auth" | "onboarding" | "company-verification" | "app";
 type Role = "designer" | "client";
 type AuthMode = "sign-up" | "sign-in";
 
 const A = "/assets";
+const SERVER_URL = `https://${projectId}.supabase.co/functions/v1/make-server-1edb83a6`;
+
+type CompanyReview = { companyName: string; method: "website" | "linkedin"; website: string; linkedin: string; status: "pending" | "verified" | "rejected"; reviewNote?: string };
+
+async function companyVerificationRequest(method: "GET" | "POST", payload?: { companyName: string; method: "website" | "linkedin"; website: string; linkedin: string }) {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Sign in again to continue company verification.");
+  const response = await fetch(`${SERVER_URL}/company-verification/${method === "GET" ? "status" : "request"}`, {
+    method,
+    headers: { "Content-Type": "application/json", apikey: publicAnonKey, Authorization: `Bearer ${token}` },
+    ...(payload ? { body: JSON.stringify(payload) } : {}),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "Company verification could not be reached.");
+  return result as { request: CompanyReview | null };
+}
 
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "8c6e6.svg" },
@@ -493,11 +511,11 @@ function AuthScreen({ role, mode, setMode, continueFlow, back }: { role: Role; m
   );
 }
 
-function Onboarding({ role, finish, back }: { role: Role; finish: () => void; back: () => void }) {
+function Onboarding({ role, finish, back }: { role: Role; finish: (account: { kind: "personal" } | { kind: "company"; companyName: string; website: string; linkedin: string; method: "website" | "linkedin" }) => void; back: () => void }) {
   const [step, setStep] = useState(1);
   const [selected, setSelected] = useState<string[]>([]);
   const [setup, setSetup] = useState("");
-  const [fields, setFields] = useState({ fullName: "", secondary: "", experience: "" });
+  const [fields, setFields] = useState({ fullName: "", secondary: "", experience: "", companyName: "", method: "website" as "website" | "linkedin" });
   const [validationError, setValidationError] = useState("");
   const finalStep = role === "client" ? 3 : 2;
   const displayStep = step + 1;
@@ -505,13 +523,22 @@ function Onboarding({ role, finish, back }: { role: Role; finish: () => void; ba
   const advance = () => {
     setValidationError("");
     if (step === 1) {
-      if (!fields.fullName.trim() || !fields.secondary.trim() || (role === "designer" && !fields.experience.trim())) {
+      if (!fields.fullName.trim() || (role === "designer" && (!fields.secondary.trim() || !fields.experience.trim())) || (role === "client" && setup === "company" && (!fields.companyName.trim() || !fields.secondary.trim()))) {
         setValidationError("Fill in every text field before continuing.");
         return;
       }
       if (role === "client" && !setup) {
         setValidationError("Choose who you are hiring for.");
         return;
+      }
+      if (role === "client" && setup === "company") {
+        try {
+          const sourceUrl = new URL(fields.secondary);
+          if (sourceUrl.protocol !== "https:" || (fields.method === "linkedin" && sourceUrl.hostname !== "linkedin.com" && !sourceUrl.hostname.endsWith(".linkedin.com"))) throw new Error("invalid company source");
+        } catch {
+          setValidationError(fields.method === "website" ? "Enter a valid HTTPS company website." : "Enter a valid LinkedIn company page URL.");
+          return;
+        }
       }
       if (selected.length === 0) {
         setValidationError(role === "client" ? "Choose at least one service purpose." : "Choose at least one creative specialty.");
@@ -521,7 +548,7 @@ function Onboarding({ role, finish, back }: { role: Role; finish: () => void; ba
       setValidationError("Choose at least one topic before continuing.");
       return;
     }
-    if (step === finalStep) finish();
+    if (step === finalStep) finish(role === "client" && setup === "company" ? { kind: "company", companyName: fields.companyName.trim(), website: fields.method === "website" ? fields.secondary.trim() : "", linkedin: fields.method === "linkedin" ? fields.secondary.trim() : "", method: fields.method } : { kind: "personal" });
     else {
       setSelected([]);
       setStep(step + 1);
@@ -546,15 +573,18 @@ function Onboarding({ role, finish, back }: { role: Role; finish: () => void; ba
           {role === "client" && <div className="hiring-grid"><button className={setup === "company" ? "active" : ""} onClick={() => setSetup("company")}><b>I'm hiring for a company</b><small>Brand, startup, or agency</small></button><button className={setup === "personal" ? "active" : ""} onClick={() => setSetup("personal")}><b>It's a personal project</b><small>Independent or hobby work</small></button></div>}
           <div className="form-grid onboarding-form">
             <label>Full Name<input required value={fields.fullName} onChange={(event) => setFields({ ...fields, fullName: event.target.value })} placeholder={role === "designer" ? "ex. Yash Stark" : "Peter Parker"} /></label>
-            <label>{role === "designer" ? "Location" : "Website"}<input required value={fields.secondary} onChange={(event) => setFields({ ...fields, secondary: event.target.value })} placeholder={role === "designer" ? "ex. Bopal, Ahmedabad, India" : "http//example.com"} /></label>
+            {role === "designer" && <label>Location<input required value={fields.secondary} onChange={(event) => setFields({ ...fields, secondary: event.target.value })} placeholder="Bopal, Ahmedabad, India" /></label>}
             {role === "designer" && <label>Years of Professional Design Experience<input required value={fields.experience} onChange={(event) => setFields({ ...fields, experience: event.target.value })} placeholder="ex. 0 years UX Designer" /></label>}
+            {role === "client" && setup === "company" && <label>Company name<input required value={fields.companyName} onChange={(event) => setFields({ ...fields, companyName: event.target.value })} placeholder="Your registered company name" /></label>}
+            {role === "client" && setup === "personal" && <label>Location (optional)<input value={fields.secondary} onChange={(event) => setFields({ ...fields, secondary: event.target.value })} placeholder="Ahmedabad, India" /></label>}
           </div>
+          {role === "client" && setup === "company" && <section className="company-verification-choice"><h3>Verify your company</h3><p>Choose a public source for review. Company accounts stay locked until verification is approved.</p><div className="company-method-options"><button type="button" className={fields.method === "website" ? "active" : ""} onClick={() => setFields({ ...fields, method: "website", secondary: "" })}><b>Company website</b><small>Submit your official business domain</small></button><button type="button" className={fields.method === "linkedin" ? "active" : ""} onClick={() => setFields({ ...fields, method: "linkedin", secondary: "" })}><b>LinkedIn company page</b><small>Submit the official company profile URL</small></button></div><label>{fields.method === "website" ? "Company website" : "LinkedIn company page"}<input required type="url" value={fields.secondary} onChange={(event) => setFields({ ...fields, secondary: event.target.value })} placeholder={fields.method === "website" ? "https://company.com" : "https://www.linkedin.com/company/..."} /></label><small>We’ll review this source and confirm the company before enabling the client account.</small></section>}
           {role === "designer" && <><h3 className="field-heading">Primary skills & creative specialties (multi-select)</h3><div className="skill-pills">{["UI/UX Design", "Brand Identity", "Typography", "Logo Design", "Vector Illustrations", "Packaging & Dielines", "Motion Graphics", "Design Systems", "Mobile/IoS Design", "Saas Design"].map((item) => <button key={item} className={selected.includes(item) ? "active" : ""} onClick={() => toggle(item)}>{item}</button>)}</div></>}
           {role === "client" && <><h3 className="field-heading">What do you plan to order services for?</h3><p className="field-note">There's something for everyone</p><div className="service-grid">{["Primary job or business", "Secondary business", "Non-business needs"].map((item) => <button key={item} className={selected.includes(item) ? "active" : ""} onClick={() => toggle(item)}><img src={`${A}/78ed7.svg`} alt="" />{item}</button>)}</div></>}
         </>}
         {step === 2 && role === "client" && <>
-          <div className="onboarding-heading"><h1>Your starter hire credits are unlocked</h1><p>Try new talent with less risk. Give rising talent a chance.</p></div>
-          <div className="credit-grid">{["1st hire", "1st hire", "1st hire"].map((item, index) => <article key={`${item}-${index}`}><div><span>CREDIT 1</span><i>✓ Available</i></div><b>15% OFF</b><p>Up to $500 on rising talent</p><small>Valid for your {item}</small></article>)}</div>
+          <div className="onboarding-heading"><h1>Your three starter credits are ready</h1><p>You can choose whether to use a credit when you post a job. Each saves 15%, up to ₹5,000, on a hire.</p></div>
+          <div className="credit-grid">{[1, 2, 3].map((item) => <article key={item}><div><span>STARTER CREDIT {item}</span><i>✓ Available</i></div><b>15% OFF</b><p>Save up to ₹5,000</p><small>Choose when posting a job</small></article>)}</div>
         </>}
         {((role === "designer" && step === 2) || (role === "client" && step === 3)) && <>
           <div className="onboarding-heading topics-heading"><h1>Pick one or more topics</h1><p>{role === "designer" ? "Choose the creative disciplines you actively design and accept client projects in." : "Select the design categories you typically commission or need creative support for."}</p></div>
@@ -567,6 +597,17 @@ function Onboarding({ role, finish, back }: { role: Role; finish: () => void; ba
   );
 }
 
+type PostedJob = {
+  id: string;
+  title: string;
+  description: string;
+  category: string;
+  budget: string;
+  deadline: string;
+  applicants: string[];
+  creditReserved: boolean;
+};
+
 const clientProjects = [
   { title: "Packaging for Noble Paws", description: "Create recyclable packs for organic pet food, made for everyday wellbeing.", budget: "₹4000–₹6000", progress: 72, ai: "AI-supported design" },
   { title: "Website Design for Noble Paws", description: "Design a welcoming shop that helps pet owners find the right daily nutrition.", budget: "₹6000–₹10000", progress: 82, ai: "No AI included" },
@@ -574,15 +615,29 @@ const clientProjects = [
 ];
 
 const recommendedDesigners = [
-  { name: "Umang Donga", title: "UI Designer", rating: "3.5", avatar: "3f8c7.png", works: ["85fba.png", "71e23.png", "04b9e.png"], ai: "AI-assisted ideation" },
-  { name: "Yashraj Gohil", title: "UX Designer", rating: "4.0", avatar: "cafad.png", works: ["35386.png", "56dc5.png", "4646f.png"], ai: "AI-assisted ideation" },
-  { name: "Darshan Solanki", title: "UI/UX Designer | Product Designer", rating: "4.5", avatar: "bff29.png", works: ["71e50.png", "567c5.png", "f5bf1.png"], ai: "No AI (100% human-made)" },
+  { name: "Umang Donga", title: "UI Designer", rating: "3.5", avatar: "3f8c7.png", works: ["85fba.png", "71e23.png", "04b9e.png"], ai: "AI-assisted ideation", aiLevel: "AI-Assisted", disciplines: ["UI/UX Design", "Product Design"], hourlyRate: 1800, location: "Ahmedabad, India" },
+  { name: "Yashraj Gohil", title: "UX Designer", rating: "4.0", avatar: "cafad.png", works: ["35386.png", "56dc5.png", "4646f.png"], ai: "AI-assisted ideation", aiLevel: "AI-Assisted", disciplines: ["UI/UX Design", "Product Design"], hourlyRate: 2200, location: "Ahmedabad, India" },
+  { name: "Darshan Solanki", title: "UI/UX Designer | Product Designer", rating: "4.5", avatar: "bff29.png", works: ["71e50.png", "567c5.png", "f5bf1.png"], ai: "No AI (100% human-made)", aiLevel: "Human-Made", disciplines: ["UI/UX Design", "Brand Identity", "Design Systems"], hourlyRate: 2500, location: "Ahmedabad, India" },
+  { name: "Riya Mehta", title: "Motion & Brand Designer", rating: "4.8", avatar: "4f7cd.png", works: ["567c5.png", "0b0c3.png", "c96a1.png"], ai: "AI-supported production", aiLevel: "AI-Supported", disciplines: ["Brand Identity", "Graphic Design", "Motion Design"], hourlyRate: 2100, location: "Vadodara, India" },
 ];
+
+const samplePostedJobs: PostedJob[] = [
+  { id: "job-noble-brand", title: "Noble Paws brand refresh", description: "A warm, modern identity for an organic pet nutrition launch. Include a logo suite, packaging direction, and a concise brand guide.", category: "Brand Identity", budget: "₹42,000", deadline: "Nov 8, 2026", applicants: ["Umang Donga", "Darshan Solanki", "Riya Mehta"], creditReserved: false },
+  { id: "job-noble-store", title: "Noble Paws online store redesign", description: "Create an accessible, responsive storefront that helps pet owners find the right daily nutrition.", category: "UI/UX Design", budget: "₹58,000", deadline: "Nov 18, 2026", applicants: ["Yashraj Gohil"], creditReserved: true },
+];
+
+const applicantProposals: Record<string, { proposal: string; amount: string; response: string }> = {
+  "Umang Donga": { proposal: "I can shape the identity and packaging system, then prepare production-ready files with two review rounds.", amount: "₹40,000", response: "Responded 2 hours ago" },
+  "Yashraj Gohil": { proposal: "I’ll map the storefront journey, build a responsive UI kit, and hand off annotated design files.", amount: "₹54,000", response: "Responded yesterday" },
+  "Darshan Solanki": { proposal: "I can deliver a human-made logo system, packaging direction, and practical brand guidelines.", amount: "₹46,000", response: "Responded yesterday" },
+  "Riya Mehta": { proposal: "I’ll build a flexible brand identity with motion-ready assets and a clear handoff for launch.", amount: "₹44,000", response: "Responded 4 hours ago" },
+};
 
 function ClientSidebar({ active, setActive, logout }: { active: string; setActive: (value: string) => void; logout: () => void }) {
   const items = [
     ["home", "Home", "3cb37.svg"],
     ["find", "Find", "cae0c.svg"],
+    ["jobs", "Jobs", "754f2.svg"],
     ["projects", "Projects", "eb6a2.svg"],
     ["chat", "Chat", "0dcf1.svg"],
   ];
@@ -599,7 +654,7 @@ function ClientSidebar({ active, setActive, logout }: { active: string; setActiv
   );
 }
 
-function JobPostFlow({ close, posted }: { close: () => void; posted: (title: string) => void }) {
+function JobPostFlow({ close, posted, creditsRemaining }: { close: () => void; posted: (job: Omit<PostedJob, "id" | "applicants" | "creditReserved">) => void; creditsRemaining: number }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("");
   const [jobType, setJobType] = useState("Freelance project");
@@ -608,13 +663,14 @@ function JobPostFlow({ close, posted }: { close: () => void; posted: (title: str
   const [description, setDescription] = useState("");
   const [budget, setBudget] = useState("");
   const [deadline, setDeadline] = useState("");
+  const [useCredit, setUseCredit] = useState(false);
   const [error, setError] = useState("");
   const next = () => {
     setError("");
     if (step === 1 && (!category || !jobType || !experience)) return setError("Choose a job category, job type, and required experience level.");
     if (step === 2 && (!title.trim() || !description.trim())) return setError("Fill in the job title and description before continuing.");
     if (step === 3 && (!budget.trim() || !deadline)) return setError("Fill in the project budget and submission deadline.");
-    if (step === 4) return posted(title);
+    if (step === 4) return posted({ title, description, category, budget: `₹${Number(budget).toLocaleString("en-IN")}`, deadline, creditReserved: useCredit });
     setStep(step + 1);
   };
   return (
@@ -639,8 +695,8 @@ function JobPostFlow({ close, posted }: { close: () => void; posted: (title: str
         </>}
         {step === 3 && <>
           <div className="job-flow-heading"><h1>Set your budget and timeline</h1><p>Let freelancers know what you're investing and when you need the work.</p></div>
-          <label className="job-input">Project budget<input required value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="$ 1,500" /><small>Total project budget in USD. Freelancers will propose within this amount.</small></label>
-          <label className="job-input">Project submission deadline<input required type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /><small>Final deliverables are due by this date. Give your freelancer time to do their best work.</small></label>
+          <label className="job-input">Project budget (INR)<input required type="number" min="1" value={budget} onChange={(event) => setBudget(event.target.value)} placeholder="45000" /><small>Set the total budget in Indian rupees.</small></label>
+          <label className="job-input">Project submission deadline<input required type="date" value={deadline} onChange={(event) => setDeadline(event.target.value)} /><small>Set the date for final deliverables.</small></label>
         </>}
         {step === 4 && <>
           <div className="job-flow-heading"><h1>Preview your job post</h1><p>Everything look right? Your next great collaborator is one post away.</p></div>
@@ -648,8 +704,11 @@ function JobPostFlow({ close, posted }: { close: () => void; posted: (title: str
             <span>JOB POST PREVIEW</span><h2>{title}</h2>
             <div><small>Category<b>{category}</b></small><small>Job type<b>{jobType}</b></small><small>Experience<b>{experience}</b></small></div>
             <p>{description}</p>
-            <div className="preview-meta"><small>Project budget · USD<b>{budget}</b></small><small>Submission deadline<b>{deadline}</b></small></div>
-            <button className="preview-file"><img src={`${A}/d9418.svg`} alt="" /><span>Website brief.pdf<small>PDF · 2.4 MB · Reference file</small></span><b>View file</b></button>
+            <div className="preview-meta"><small>Project budget<b>₹{Number(budget).toLocaleString("en-IN")}</b></small><small>Submission deadline<b>{deadline}</b></small></div>
+          </section>
+          <section className="starter-credit-choice">
+            <div><b>Use a starter credit?</b><p>Optional: save 15% on your first hire, up to ₹5,000. The credit is applied after you agree project details.</p><small>{creditsRemaining} of 3 credits available</small></div>
+            <label><input type="checkbox" checked={useCredit} disabled={creditsRemaining === 0} onChange={(event) => setUseCredit(event.target.checked)} /><span>{creditsRemaining > 0 ? "Reserve one credit for this job" : "No credits remaining"}</span></label>
           </section>
         </>}
         {error && <p className="form-error" role="alert">{error}</p>}
@@ -666,13 +725,16 @@ function ClientPageHeader({ eyebrow, title, description, action }: { eyebrow: st
 function DesignerDirectory({ saved, toggleSaved, openProfile }: { saved: string[]; toggleSaved: (name: string) => void; openProfile: (name: string) => void }) {
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState("All designers");
-  const matches = recommendedDesigners.filter((designer) => `${designer.name} ${designer.title}`.toLowerCase().includes(query.toLowerCase()));
+  const [aiDisclosure, setAiDisclosure] = useState("All disclosure levels");
+  const [maxRate, setMaxRate] = useState(3000);
+  const matches = recommendedDesigners.filter((designer) => `${designer.name} ${designer.title} ${designer.disciplines.join(" ")}`.toLowerCase().includes(query.toLowerCase()) && (category === "All designers" || designer.disciplines.includes(category)) && (aiDisclosure === "All disclosure levels" || designer.aiLevel === aiDisclosure) && designer.hourlyRate <= maxRate);
   return (
     <>
       <ClientPageHeader eyebrow="Verified creative talent" title="Find the right designer" description="Search by discipline, compare real portfolio work, and review transparent AI usage." />
-      <div className="client-search-row"><label><img src={`${A}/cae0c.svg`} alt="" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by designer, skill, or discipline" /></label><select><option>Available now</option><option>This week</option><option>This month</option></select></div>
-      <div className="client-filter-chips">{["All designers", "UI/UX Design", "Graphic Design", "Product Design", "Motion Design"].map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div>
-      <div className="directory-grid">{matches.map((designer) => <article className="directory-card" key={designer.name}><div className="designer-identity"><img src={`${A}/${designer.avatar}`} alt="" /><span><b>{designer.name}</b><small>{designer.title}</small></span><strong>★ {designer.rating}</strong></div><span className="designer-ai">{designer.ai}</span><div className="designer-work">{designer.works.map((work) => <img src={`${A}/${work}`} alt="" key={work} />)}</div><div className="directory-meta"><span>32 completed projects</span><span>Available this week</span></div><footer><button className={saved.includes(designer.name) ? "saved" : ""} onClick={() => toggleSaved(designer.name)}>{saved.includes(designer.name) ? "Saved" : "Save"}</button><button onClick={() => openProfile(designer.name)}>View Profile</button></footer></article>)}</div>
+      <div className="client-search-row"><label><img src={`${A}/cae0c.svg`} alt="" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search by designer, skill, or discipline" /></label><select value={aiDisclosure} onChange={(event) => setAiDisclosure(event.target.value)}><option>All disclosure levels</option><option>Human-Made</option><option>AI-Assisted</option><option>AI-Supported</option></select></div>
+      <div className="client-filter-chips">{["All designers", "UI/UX Design", "Brand Identity", "Graphic Design", "Product Design", "Motion Design", "Design Systems"].map((item) => <button key={item} className={category === item ? "active" : ""} onClick={() => setCategory(item)}>{item}</button>)}</div>
+      <label className="budget-range">Maximum hourly budget <b>₹{maxRate.toLocaleString("en-IN")}/hr</b><input type="range" min="1000" max="5000" step="250" value={maxRate} onChange={(event) => setMaxRate(Number(event.target.value))} /></label>
+      {matches.length ? <div className="directory-grid">{matches.map((designer) => <article className="directory-card" key={designer.name}><div className="designer-identity"><img src={`${A}/${designer.avatar}`} alt="" /><span><b>{designer.name}</b><small>{designer.title}</small></span><strong>★ {designer.rating}</strong></div><span className="designer-ai">{designer.ai}</span><div className="designer-work">{designer.works.map((work) => <img src={`${A}/${work}`} alt="" key={work} />)}</div><div className="directory-meta"><span>₹{designer.hourlyRate.toLocaleString("en-IN")}/hour · {designer.location}</span><span>Available this week</span></div><footer><button className={saved.includes(designer.name) ? "saved" : ""} onClick={() => toggleSaved(designer.name)}>{saved.includes(designer.name) ? "Saved" : "Save"}</button><button onClick={() => openProfile(designer.name)}>View Profile</button></footer></article>)}</div> : <div className="client-empty"><h2>No designers match these filters</h2><p>Try a different discipline, disclosure level, or budget.</p><button className="outline-button" onClick={() => { setCategory("All designers"); setAiDisclosure("All disclosure levels"); setMaxRate(3000); setQuery(""); }}>Clear filters</button></div>}
     </>
   );
 }
@@ -689,6 +751,90 @@ function ClientProjectsPage({ projects, create }: { projects: typeof clientProje
       {tab === "Completed" && <div className="completed-grid">{["Organic pet food launch kit", "Noble Paws social campaign", "Retail display system"].map((item) => <article key={item}><span>Completed</span><h3>{item}</h3><p>Delivered on time • Funds released</p><button>View files</button></article>)}</div>}
     </>
   );
+}
+
+function PostedJobsPage({ jobs, create, openHire }: { jobs: PostedJob[]; create: () => void; openHire: (designer: (typeof recommendedDesigners)[number], job: PostedJob) => void }) {
+  const [expanded, setExpanded] = useState(jobs[0]?.id ?? null);
+  return <>
+    <ClientPageHeader eyebrow="Hiring activity" title="Posted jobs & responses" description="Review every proposal and choose who you want to discuss the project with." action={<button className="primary-button" onClick={create}>Post a job <span>+</span></button>} />
+    {jobs.length === 0 ? <div className="client-empty"><h2>No jobs posted yet</h2><p>Post a brief to start receiving designer proposals.</p><button className="primary-button" onClick={create}>Create your first job</button></div> : <div className="posted-job-list">{jobs.map((job) => {
+      const isExpanded = expanded === job.id;
+      const applicants = job.applicants.map((name) => recommendedDesigners.find((designer) => designer.name === name)).filter((designer): designer is (typeof recommendedDesigners)[number] => Boolean(designer));
+      return <article className="posted-job-card" key={job.id}>
+        <button className="posted-job-summary" onClick={() => setExpanded(isExpanded ? null : job.id)} aria-expanded={isExpanded}>
+          <span className="posted-job-category">{job.category}</span><h2>{job.title}</h2><p>{job.description}</p>
+          <span className="posted-job-meta"><b>{job.budget}</b><span>Deadline {job.deadline}</span><span>{applicants.length} {applicants.length === 1 ? "response" : "responses"}</span>{job.creditReserved && <i>Starter credit reserved</i>}</span>
+        </button>
+        {isExpanded && <div className="applicant-list">{applicants.length ? applicants.map((designer) => {
+          const proposal = applicantProposals[designer.name];
+          return <section className="applicant-card" key={designer.name}>
+            <div className="designer-identity"><img src={`${A}/${designer.avatar}`} alt="" /><span><b>{designer.name}</b><small>{designer.title}</small></span><strong>★ {designer.rating}</strong></div>
+            <span className="designer-ai">{designer.ai}</span>
+            <p>{proposal?.proposal}</p>
+            <div className="applicant-portfolio">{designer.works.map((work) => <img src={`${A}/${work}`} alt={`${designer.name} portfolio example`} key={work} />)}</div>
+            <div className="applicant-response-meta"><span><b>Proposal</b>{proposal?.amount}</span><span><b>Response</b>{proposal?.response}</span></div>
+            <button className="primary-button" onClick={() => openHire(designer, job)}>Discuss with {designer.name.split(" ")[0]}</button>
+          </section>;
+        }) : <div className="applicant-empty"><b>No responses yet</b><p>We’ll show proposals here as designers reply.</p></div>}</div>}
+      </article>;
+    })}</div>}
+  </>;
+}
+
+type HireStep = "chat" | "call" | "agreement" | "confirmation" | "payment";
+
+function HireFlow({ designer, jobs, initialJob, close, hired }: { designer: (typeof recommendedDesigners)[number]; jobs: PostedJob[]; initialJob: PostedJob; close: () => void; hired: (job: PostedJob, designer: (typeof recommendedDesigners)[number]) => void }) {
+  const [step, setStep] = useState<HireStep>("chat");
+  const [jobId, setJobId] = useState(initialJob.id);
+  const job = jobs.find((item) => item.id === jobId) ?? initialJob;
+  const [messages, setMessages] = useState([`Hi, thanks for reaching out about “${job.title}”. What would you like to discuss?`]);
+  const [draft, setDraft] = useState("");
+  const [callDate, setCallDate] = useState("");
+  const [callTime, setCallTime] = useState("");
+  const [callComplete, setCallComplete] = useState(false);
+  const [callStarted, setCallStarted] = useState(false);
+  const [cameraOn, setCameraOn] = useState(true);
+  const [microphoneOn, setMicrophoneOn] = useState(true);
+  const [scope, setScope] = useState(job.description);
+  const [deliverables, setDeliverables] = useState("Design files, source assets, and a handoff guide");
+  const [timeline, setTimeline] = useState(job.deadline);
+  const [price, setPrice] = useState(applicantProposals[designer.name]?.amount.replace(/[^0-9]/g, "") ?? "45000");
+  const [agreed, setAgreed] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState("UPI");
+  const [checkoutNotice, setCheckoutNotice] = useState(false);
+  const proposalAmount = Number(applicantProposals[designer.name]?.amount.replace(/[^0-9]/g, "") ?? price);
+  const basePrice = Number(price) || proposalAmount;
+  const discount = job.creditReserved ? Math.min(Math.round(basePrice * 0.15), 5000) : 0;
+  const total = basePrice - discount;
+  const sendMessage = () => { if (draft.trim()) { setMessages([...messages, draft.trim()]); setDraft(""); } };
+  const steps: { id: HireStep; label: string }[] = [{ id: "chat", label: "Chat" }, { id: "call", label: "Video call" }, { id: "agreement", label: "Project details" }, { id: "confirmation", label: "Confirm" }, { id: "payment", label: "Payment" }];
+  const go = (next: HireStep) => { setCheckoutNotice(false); setStep(next); };
+  return <div className="hire-flow-overlay" role="dialog" aria-modal="true" aria-label={`Discuss hiring ${designer.name}`}>
+    <button className="hire-flow-backdrop" onClick={close} aria-label="Close hiring flow" />
+    <section className="hire-flow-panel">
+      <header className="hire-flow-header"><div><span className="eyebrow">Hire a designer</span><h2>{designer.name}</h2><p>{designer.title} · {designer.ai}</p></div><button onClick={close} aria-label="Close">×</button></header>
+      <nav className="hire-stepper" aria-label="Hiring steps">{steps.map((item, index) => <span className={item.id === step ? "active" : steps.findIndex((x) => x.id === step) > index ? "done" : ""} key={item.id}><i>{index + 1}</i>{item.label}</span>)}</nav>
+      {step === "chat" && <div className="hire-step-content"><div className="hire-step-title"><h3>Start with a conversation</h3><p>Talk through the brief and ask questions before scheduling a call or discussing payment.</p></div>
+        {jobs.length > 0 && <label className="job-select-label">Job you’re discussing<select value={jobId} onChange={(event) => { const nextJob = jobs.find((item) => item.id === event.target.value); if (nextJob) { setJobId(nextJob.id); setScope(nextJob.description); setTimeline(nextJob.deadline); } }}><option value={job.id}>{job.title}</option>{jobs.filter((item) => item.id !== job.id).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
+        <div className="hire-chat-thread">{messages.map((message, index) => <p key={`${message}-${index}`} className={index % 2 === 1 ? "mine" : ""}><small>{index % 2 === 1 ? "You" : designer.name}</small>{message}</p>)}</div>
+        <div className="hire-chat-compose"><input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendMessage()} placeholder={`Message ${designer.name.split(" ")[0]}`} /><button onClick={sendMessage}>Send</button></div>
+        <div className="hire-flow-actions"><button className="primary-button" disabled={messages.length < 2} onClick={() => go("call")}>Schedule video discussion</button></div>
+      </div>}
+      {step === "call" && <div className="hire-step-content"><div className="hire-step-title"><h3>Meet before you decide</h3><p>Choose a time to discuss the brief together. Payment stays locked until the call and project details are complete.</p></div>
+        <div className="call-schedule-card"><label>Date<input type="date" value={callDate} onChange={(event) => setCallDate(event.target.value)} /></label><label>Time<input type="time" value={callTime} onChange={(event) => setCallTime(event.target.value)} /></label><span>Timezone: Asia/Kolkata (IST)</span></div>
+        {callDate && callTime && <div className="scheduled-call-note"><b>Video discussion scheduled</b><span>{callDate} at {callTime} IST · {designer.name}</span><small>Start a preview call room to complete this step. Live video requires a call provider.</small>{!callStarted && !callComplete && <button className="primary-button" onClick={() => setCallStarted(true)}>Start video discussion</button>}{callStarted && <div className="video-room"><div className="video-tile"><img src={`${A}/${designer.avatar}`} alt="" /><b>{designer.name}</b><small>Video preview placeholder</small></div><div className="video-tile self"><div className="video-initials">You</div><b>You</b><small>{cameraOn ? "Camera on" : "Camera off"}</small></div><div className="video-room-controls"><button onClick={() => setMicrophoneOn(!microphoneOn)}>{microphoneOn ? "Mute microphone" : "Turn microphone on"}</button><button onClick={() => setCameraOn(!cameraOn)}>{cameraOn ? "Turn camera off" : "Turn camera on"}</button><button className="danger-button" onClick={() => { setCallStarted(false); setCallComplete(true); }}>End discussion</button></div><small>No live audio or video is transmitted in this prototype.</small></div>}{callComplete && <b className="call-complete-note">Discussion complete</b>}</div>}
+        <div className="hire-flow-actions"><button className="outline-button" onClick={() => go("chat")}>Back to chat</button><button className="primary-button" disabled={!callDate || !callTime || !callComplete} onClick={() => go("agreement")}>Continue to project details</button></div>
+      </div>}
+      {step === "agreement" && <div className="hire-step-content"><div className="hire-step-title"><h3>Agree on the project together</h3><p>Set the scope, deliverables, timeline, and price together.</p></div>
+        <label className="hire-field">Scope of work<textarea value={scope} onChange={(event) => setScope(event.target.value)} /></label><label className="hire-field">Deliverables<textarea value={deliverables} onChange={(event) => setDeliverables(event.target.value)} /></label><div className="hire-fields-row"><label className="hire-field">Target date<input value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="e.g. 20 Nov 2026" /></label><label className="hire-field">Agreed project price (₹)<input type="number" min="1" value={price} onChange={(event) => setPrice(event.target.value)} /></label></div>
+        {job.creditReserved && <div className="credit-applied-note">Starter credit reserved: −₹{discount.toLocaleString("en-IN")} at checkout. Total after credit: ₹{total.toLocaleString("en-IN")}.</div>}
+        <label className="mutual-agreement"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} /><span>Both sides agree to the scope, deliverables, timeline, and price above.</span></label>
+        <div className="hire-flow-actions"><button className="outline-button" onClick={() => go("call")}>Back to video call</button><button className="primary-button" disabled={!scope.trim() || !deliverables.trim() || !timeline.trim() || basePrice <= 0 || !agreed} onClick={() => go("confirmation")}>Review agreement</button></div>
+      </div>}
+      {step === "confirmation" && <div className="hire-step-content"><div className="hire-step-title"><h3>Confirm the project</h3><p>Both sides have reviewed the agreed details. Payment starts only after you confirm this summary.</p></div><section className="hire-confirmation-summary"><span>{job.title}</span><h4>{designer.name}</h4><p><b>Scope</b>{scope}</p><p><b>Deliverables</b>{deliverables}</p><div><span>Timeline</span><b>{timeline}</b></div><div><span>Agreed price</span><b>₹{basePrice.toLocaleString("en-IN")}</b></div>{discount > 0 && <div><span>Starter credit</span><b>−₹{discount.toLocaleString("en-IN")}</b></div>}<div className="hire-summary-total"><span>Total after credit</span><b>₹{total.toLocaleString("en-IN")}</b></div></section><div className="hire-flow-actions"><button className="outline-button" onClick={() => go("agreement")}>Edit details</button><button className="primary-button" onClick={() => { hired(job, designer); go("payment"); }}>Confirm hire & continue to payment</button></div></div>}
+      {step === "payment" && <div className="hire-step-content"><div className="hire-step-title"><h3>Secure project payment</h3><p>Your hiring details are confirmed. The advance is due now; the remaining balance is released after final delivery approval.</p></div><section className="payment-summary"><div><span>Agreed project total</span><b>₹{total.toLocaleString("en-IN")}</b></div><div><span>10% advance to start</span><b>₹{Math.ceil(total * 0.1).toLocaleString("en-IN")}</b></div><div><span>Remaining 90% after approved delivery</span><b>₹{Math.floor(total * 0.9).toLocaleString("en-IN")}</b></div></section><fieldset className="payment-methods"><legend>Choose a payment method</legend>{["UPI", "Card", "Net banking"].map((method) => <label key={method}><input type="radio" name="payment-method" checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} />{method}</label>)}</fieldset><div className="payment-gateway-note"><b>Protected checkout</b><span>Payment provider setup is required before a real charge can be taken. No payment has been made.</span></div>{checkoutNotice && <p className="form-error" role="status">Secure checkout is not connected yet. Your confirmed project is saved and no charge was made.</p>}<div className="hire-flow-actions"><button className="outline-button" onClick={() => go("confirmation")}>Review agreement</button><button className="primary-button" onClick={() => setCheckoutNotice(true)}>Continue to secure payment</button></div></div>}
+    </section>
+  </div>;
 }
 
 function ClientChatPage() {
@@ -708,7 +854,7 @@ function ClientChatPage() {
   return (
     <>
       <ClientPageHeader eyebrow="Client messages" title="Chat with designers" description="Keep briefs, feedback, and project decisions together." />
-      <div className="client-chat-layout"><aside>{contacts.map((name, index) => <button className={contact === name ? "active" : ""} onClick={() => setContact(name)} key={name}><img src={`${A}/${recommendedDesigners[index].avatar}`} alt="" /><span><b>{name}</b><small>{index === 0 ? "Active now" : "Recently active"}</small></span></button>)}</aside><section><header><div className="designer-identity"><img src={`${A}/${recommendedDesigners[contacts.indexOf(contact)].avatar}`} alt="" /><span><b>{contact}</b><small>Verified designer</small></span></div><button>View contract</button></header><div className="client-chat-thread">{messages[contact].map((message, index) => <div className={index % 2 ? "mine" : ""} key={`${message}-${index}`}><small>{index % 2 ? "You" : contact}</small><p>{message}</p></div>)}</div><footer><input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder={`Message ${contact}`} /><button onClick={send}>Send</button></footer></section></div>
+      <div className="client-chat-layout"><aside>{contacts.map((name, index) => <button className={contact === name ? "active" : ""} onClick={() => setContact(name)} key={name}><img src={`${A}/${recommendedDesigners[index].avatar}`} alt="" /><span><b>{name}</b><small>{index === 0 ? "Active now" : "Recently active"}</small></span></button>)}</aside><section><header><div className="designer-identity"><img src={`${A}/${recommendedDesigners[contacts.indexOf(contact)].avatar}`} alt="" /><span><b>{contact}</b><small>Verified designer</small></span></div><span className="chat-prehire-label">Pre-hire discussion</span></header><div className="client-chat-thread">{messages[contact].map((message, index) => <div className={index % 2 ? "mine" : ""} key={`${message}-${index}`}><small>{index % 2 ? "You" : contact}</small><p>{message}</p></div>)}</div><footer><input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder={`Message ${contact}`} /><button onClick={send}>Send</button></footer></section></div>
     </>
   );
 }
@@ -736,22 +882,63 @@ function ClientSettingsPage({ logout }: { logout: () => void }) {
   );
 }
 
-function ClientDashboard({ logout }: { logout: () => void }) {
+function CompanyVerificationGate({ verified, updateDetails, logout }: { verified: () => void; updateDetails: () => void; logout: () => void }) {
+  const [review, setReview] = useState<CompanyReview | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const refresh = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const result = await companyVerificationRequest("GET");
+      setReview(result.request);
+      if (result.request?.status === "verified") verified();
+    } catch (issue) { setError(issue instanceof Error ? issue.message : "Unable to check the verification status."); }
+    finally { setLoading(false); }
+  };
+  useEffect(() => { void refresh(); }, []);
+  return <div className="company-gate-page"><div className="company-gate-card"><Logo /><span className="step-label">Client account verification</span><h1>{review?.status === "verified" ? "Company verified" : review?.status === "rejected" ? "More details needed" : "Your company is under review"}</h1><p>We check company accounts before opening the client workspace. Your submitted website or LinkedIn company page is reviewed by FindRight.</p>
+    {review && <section className="company-review-summary"><div><b>{review.companyName}</b><span className={`company-review-status ${review.status}`}>{review.status === "pending" ? "In review" : review.status === "verified" ? "Verified" : "Needs changes"}</span></div><small>{review.method === "website" ? review.website : review.linkedin}</small>{review.status === "pending" && <p>We’ll unlock the workspace after a reviewer confirms the company details. A submitted URL alone does not count as approval.</p>}{review.reviewNote && <p>{review.reviewNote}</p>}</section>}
+    {!review && !loading && <div className="company-review-summary"><b>No company verification request found</b><p>Complete your company details to submit a review.</p></div>}
+    {loading && <p className="company-gate-status">Checking verification status…</p>}{error && <p className="form-error" role="alert">{error}</p>}
+    <div className="company-gate-actions"><button className="primary-button" onClick={() => void refresh()} disabled={loading}>{loading ? "Checking…" : "Check verification status"}</button><button className="outline-button" onClick={updateDetails}>Update company details</button><button className="back-link" onClick={logout}>Sign out</button></div>
+  </div></div>;
+}
+
+function ClientDashboard({ logout, userId }: { logout: () => void; userId: string }) {
   const [active, setActive] = useState("home");
   const [posting, setPosting] = useState(false);
   const [projects, setProjects] = useState(clientProjects);
+  const [jobs, setJobs] = useState<PostedJob[]>(samplePostedJobs);
+  const [creditsRemaining, setCreditsRemaining] = useState(3);
+  const [loadedUser, setLoadedUser] = useState("");
   const [notice, setNotice] = useState("");
   const [savedDesigners, setSavedDesigners] = useState<string[]>([]);
   const [selectedDesigner, setSelectedDesigner] = useState<string | null>(null);
+  const [hire, setHire] = useState<{ designer: (typeof recommendedDesigners)[number]; job: PostedJob } | null>(null);
+  useEffect(() => {
+    if (!userId) return;
+    try {
+      const storedJobs = localStorage.getItem(`findright:${userId}:posted-jobs`);
+      const parsedJobs = storedJobs ? JSON.parse(storedJobs) as unknown : null;
+      setJobs(Array.isArray(parsedJobs) ? parsedJobs as PostedJob[] : samplePostedJobs);
+      const storedCredits = localStorage.getItem(`findright:${userId}:starter-credits`);
+      setCreditsRemaining(storedCredits === null ? 3 : Math.max(0, Number(storedCredits) || 0));
+    } catch { setJobs(samplePostedJobs); setCreditsRemaining(3); }
+    setLoadedUser(userId);
+  }, [userId]);
+  useEffect(() => { if (userId && loadedUser === userId) localStorage.setItem(`findright:${userId}:posted-jobs`, JSON.stringify(jobs)); }, [jobs, loadedUser, userId]);
+  useEffect(() => { if (userId && loadedUser === userId) localStorage.setItem(`findright:${userId}:starter-credits`, String(creditsRemaining)); }, [creditsRemaining, loadedUser, userId]);
   const toggleSaved = (name: string) => setSavedDesigners(savedDesigners.includes(name) ? savedDesigners.filter((item) => item !== name) : [...savedDesigners, name]);
   const openProfile = (name: string) => { setSelectedDesigner(name); setActive("find"); };
-  if (posting) return <JobPostFlow close={() => setPosting(false)} posted={(title) => { setProjects([{ title, description: "Your newly posted project is ready to receive matched designer applications.", budget: "Budget pending", progress: 0, ai: "AI preference pending" }, ...projects]); setPosting(false); setNotice("Your job was posted successfully."); }} />;
+  const openHire = (designer: (typeof recommendedDesigners)[number], job: PostedJob = jobs[0]) => { setSelectedDesigner(null); setHire({ designer, job }); };
+  if (posting) return <JobPostFlow close={() => setPosting(false)} creditsRemaining={creditsRemaining} posted={(job) => { const nextJob: PostedJob = { ...job, id: `job-${Date.now()}`, applicants: [] }; setJobs([nextJob, ...jobs]); if (job.creditReserved) setCreditsRemaining(Math.max(0, creditsRemaining - 1)); setPosting(false); setActive("jobs"); setNotice(job.creditReserved ? "Job posted. A starter credit is reserved for your first hire." : "Job posted. Responses will appear in Posted jobs."); }} />;
   return (
     <div className="client-shell">
       <ClientSidebar active={active} setActive={setActive} logout={logout} />
       <main className="client-main">
         {notice && <div className="success-notice">{notice}<button onClick={() => setNotice("")}>Dismiss</button></div>}
-        {active === "home" && <><header className="client-welcome"><h1>Welcome, Mr.Parekh</h1><button className="primary-button" onClick={() => setPosting(true)}>Create a new project <span>+</span></button></header><div className="client-dashboard-grid">
+        {active === "home" && <><header className="client-welcome"><h1>Welcome, Mr.Parekh</h1><button className="primary-button" onClick={() => setPosting(true)}>Create a new project <span>+</span></button></header><div className="client-escrow-status"><b>Escrow protection</b><span>10% advance after project confirmation · Remaining 90% after approved delivery</span></div><div className="client-dashboard-grid">
           <section className="client-projects">
             <h2>Active Projects</h2>
             {projects.map((project) => <article key={project.title}><div><h3>{project.title}</h3><p>{project.description}</p></div><button onClick={() => setActive("projects")}>Read Brief</button><span className="client-ai">{project.ai}</span><div className="client-project-meta"><b>Budget: {project.budget}</b><b>Timeline: 2–3 weeks · {project.progress}%</b></div><div className="client-progress"><i style={{ width: `${project.progress}%` }} /></div></article>)}
@@ -762,6 +949,7 @@ function ClientDashboard({ logout }: { logout: () => void }) {
           </section>
         </div></>}
         {active === "find" && <>{selectedDesigner && <div className="selected-designer-banner">Viewing {selectedDesigner}'s verified profile <button onClick={() => setSelectedDesigner(null)}>Close</button></div>}<DesignerDirectory saved={savedDesigners} toggleSaved={toggleSaved} openProfile={openProfile} /></>}
+        {active === "jobs" && <PostedJobsPage jobs={jobs} create={() => setPosting(true)} openHire={openHire} />}
         {active === "projects" && <ClientProjectsPage projects={projects} create={() => setPosting(true)} />}
         {active === "chat" && <ClientChatPage />}
         {active === "profile" && <ClientProfilePage />}
@@ -769,8 +957,9 @@ function ClientDashboard({ logout }: { logout: () => void }) {
       </main>
       {selectedDesigner && active === "find" && (() => {
         const designer = recommendedDesigners.find((item) => item.name === selectedDesigner)!;
-        return <div className="designer-profile-overlay" role="dialog" aria-modal="true" aria-label={`${designer.name} profile`}><button className="overlay-backdrop" onClick={() => setSelectedDesigner(null)} aria-label="Close profile" /><section className="designer-profile-panel"><button className="profile-close" onClick={() => setSelectedDesigner(null)}>Close</button><div className="designer-profile-head"><img src={`${A}/${designer.avatar}`} alt="" /><div><span className="pill success">Identity verified</span><h2>{designer.name}</h2><p>{designer.title} • Ahmedabad, India</p><b>★ {designer.rating} • 32 completed projects</b></div></div><p className="designer-profile-bio">Multi-disciplinary designer focused on thoughtful brand systems, accessible digital experiences, and production-ready project delivery with clear human–AI disclosure.</p><div className="tag-row">{["Brand Identity", "UI/UX Design", "Typography", "Design Systems"].map((item) => <span key={item}>{item}</span>)}</div><h3>Selected portfolio work</h3><div className="profile-work-grid">{designer.works.map((work) => <img src={`${A}/${work}`} alt="" key={work} />)}</div><div className="profile-disclosure"><b>AI usage disclosure</b><span>{designer.ai}</span></div><footer><button className="outline-button" onClick={() => toggleSaved(designer.name)}>{savedDesigners.includes(designer.name) ? "Saved to shortlist" : "Save profile"}</button><button className="primary-button" onClick={() => { setSelectedDesigner(null); setNotice(`Project invitation sent to ${designer.name}.`); setActive("home"); }}>Send a project</button></footer></section></div>;
+        return <div className="designer-profile-overlay" role="dialog" aria-modal="true" aria-label={`${designer.name} profile`}><button className="overlay-backdrop" onClick={() => setSelectedDesigner(null)} aria-label="Close profile" /><section className="designer-profile-panel"><button className="profile-close" onClick={() => setSelectedDesigner(null)}>Close</button><div className="designer-profile-head"><img src={`${A}/${designer.avatar}`} alt="" /><div><span className="pill success">Identity verified</span><h2>{designer.name}</h2><p>{designer.title} • Ahmedabad, India</p><b>★ {designer.rating} • 32 completed projects</b></div></div><p className="designer-profile-bio">Multi-disciplinary designer focused on thoughtful brand systems, accessible digital experiences, and production-ready project delivery with clear human–AI disclosure.</p><div className="tag-row">{["Brand Identity", "UI/UX Design", "Typography", "Design Systems"].map((item) => <span key={item}>{item}</span>)}</div><h3>Selected portfolio work</h3><div className="profile-work-grid">{designer.works.map((work) => <img src={`${A}/${work}`} alt="" key={work} />)}</div><div className="profile-disclosure"><b>AI usage disclosure</b><span>{designer.ai}</span></div><footer><button className="outline-button" onClick={() => toggleSaved(designer.name)}>{savedDesigners.includes(designer.name) ? "Saved to shortlist" : "Save profile"}</button><button className="primary-button" onClick={() => openHire(designer)}>Start hiring discussion</button></footer></section></div>;
       })()}
+      {hire && <HireFlow designer={hire.designer} jobs={jobs} initialJob={hire.job} close={() => setHire(null)} hired={(job, designer) => { setProjects([{ title: job.title, description: job.description, budget: job.budget, progress: 0, ai: designer.ai }, ...projects]); setNotice(`Hiring confirmed with ${designer.name}. Advance payment is available after project agreement.`); }} />}
     </div>
   );
 }
@@ -780,24 +969,74 @@ export default function App() {
   const [stage, setStage] = useState<EntryStage>("landing");
   const [role, setRole] = useState<Role>("designer");
   const [authMode, setAuthMode] = useState<AuthMode>("sign-up");
+  const [userId, setUserId] = useState("");
   useEffect(() => {
-    void supabase.auth.getSession().then(({ data }) => {
-      if (data.session?.user.email_confirmed_at) {
-        const savedRole = data.session.user.user_metadata.role;
-        if (savedRole === "client" || savedRole === "designer") setRole(savedRole);
-        setStage("app");
+    void supabase.auth.getSession().then(async ({ data }) => {
+      const user = data.session?.user;
+      if (!user?.email_confirmed_at) return;
+      setUserId(user.id);
+      const metadata = user.user_metadata ?? {};
+      const savedRole = metadata.role;
+      if (savedRole === "client" || savedRole === "designer") setRole(savedRole);
+      if (savedRole !== "client") { setStage("app"); return; }
+      if (metadata.account_type === "personal") { setStage("app"); return; }
+      if (metadata.account_type === "company") {
+        try {
+          const { request } = await companyVerificationRequest("GET");
+          setStage(request?.status === "verified" ? "app" : "company-verification");
+        } catch { setStage("company-verification"); }
+        return;
       }
+      setStage("onboarding");
     });
   }, []);
   const begin = (mode: AuthMode) => { setAuthMode(mode); setStage("role"); };
   const chooseRole = (nextRole: Role) => { setRole(nextRole); setStage("auth"); };
-  const authenticate = () => setStage(authMode === "sign-up" ? "onboarding" : "app");
+  const authenticate = async () => {
+    if (authMode === "sign-up") { setStage("onboarding"); return; }
+    const { data } = await supabase.auth.getSession();
+    const authenticatedUser = data.session?.user;
+    if (authenticatedUser) setUserId(authenticatedUser.id);
+    const metadata = authenticatedUser?.user_metadata ?? {};
+    const authenticatedRole = metadata.role === "client" || metadata.role === "designer" ? metadata.role : role;
+    setRole(authenticatedRole);
+    if (authenticatedRole !== "client") { setStage("app"); return; }
+    if (metadata.account_type === "personal") { setStage("app"); return; }
+    if (metadata.account_type === "company") {
+      try {
+        const { request } = await companyVerificationRequest("GET");
+        setStage(request?.status === "verified" ? "app" : "company-verification");
+      } catch { setStage("company-verification"); }
+      return;
+    }
+    setStage("onboarding");
+  };
+  const finishOnboarding = async (account: { kind: "personal" } | { kind: "company"; companyName: string; website: string; linkedin: string; method: "website" | "linkedin" }) => {
+    if (role !== "client") { setStage("app"); return; }
+    if (account.kind === "personal") {
+      const { data } = await supabase.auth.updateUser({ data: { account_type: "personal" } });
+      if (data.user) setUserId(data.user.id);
+      setStage("app");
+      return;
+    }
+    const { data, error } = await supabase.auth.updateUser({ data: { account_type: "company" } });
+    if (data.user) setUserId(data.user.id);
+    if (error) { setStage("company-verification"); return; }
+    try {
+      await companyVerificationRequest("POST", account);
+    } catch {
+      setStage("company-verification");
+      return;
+    }
+    setStage("company-verification");
+  };
   const logout = () => { void supabase.auth.signOut(); setView("home"); setStage("landing"); };
   if (stage === "landing") return <Landing begin={begin} />;
   if (stage === "role") return <RoleSelection mode={authMode} choose={chooseRole} back={() => setStage("landing")} />;
   if (stage === "auth") return <AuthScreen role={role} mode={authMode} setMode={setAuthMode} continueFlow={authenticate} back={() => setStage("role")} />;
-  if (stage === "onboarding") return <Onboarding role={role} finish={() => setStage("app")} back={() => setStage("auth")} />;
-  if (role === "client") return <ClientDashboard logout={logout} />;
+  if (stage === "onboarding") return <Onboarding role={role} finish={finishOnboarding} back={() => setStage("auth")} />;
+  if (stage === "company-verification") return <CompanyVerificationGate verified={() => setStage("app")} updateDetails={() => setStage("onboarding")} logout={logout} />;
+  if (role === "client") return <ClientDashboard logout={logout} userId={userId} />;
   return (
     <div className="app-shell">
       <Sidebar view={view} setView={setView} logout={logout} />
