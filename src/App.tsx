@@ -456,12 +456,12 @@ function RoleSelection({ mode, choose, back }: { mode: AuthMode; choose: (role: 
   );
 }
 
-function AuthScreen({ role, mode, setMode, continueFlow, back }: { role: Role; mode: AuthMode; setMode: (mode: AuthMode) => void; continueFlow: () => void; back: () => void }) {
+function AuthScreen({ role, mode, setMode, continueFlow, back, initialError = "" }: { role: Role; mode: AuthMode; setMode: (mode: AuthMode) => void; continueFlow: () => void; back: () => void; initialError?: string }) {
   const roleLabel = role === "designer" ? "Designer Account" : "Client Account";
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
+  const [error, setError] = useState(initialError);
   const [pending, setPending] = useState(false);
   const [verificationSent, setVerificationSent] = useState(false);
   const submit = async () => {
@@ -497,11 +497,26 @@ function AuthScreen({ role, mode, setMode, continueFlow, back }: { role: Role; m
   };
   const socialLogin = async (provider: "google" | "linkedin_oidc") => {
     setError("");
-    const { error: authError } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo: window.location.origin },
-    });
-    if (authError) setError(authError.message);
+    setPending(true);
+    window.localStorage.setItem("findright.oauth.role", role);
+    window.localStorage.setItem("findright.oauth.provider", provider);
+    try {
+      const { error: authError } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: { redirectTo: window.location.origin },
+      });
+      if (authError) {
+        window.localStorage.removeItem("findright.oauth.role");
+        window.localStorage.removeItem("findright.oauth.provider");
+        setPending(false);
+        setError(authError.message);
+      }
+    } catch (issue) {
+      window.localStorage.removeItem("findright.oauth.role");
+      window.localStorage.removeItem("findright.oauth.provider");
+      setPending(false);
+      setError(issue instanceof Error ? issue.message : "Social sign-in could not be started.");
+    }
   };
   const checkVerification = async () => {
     const { data } = await supabase.auth.getSession();
@@ -550,9 +565,8 @@ function AuthScreen({ role, mode, setMode, continueFlow, back }: { role: Role; m
           <button className="primary-button auth-continue" type="submit" disabled={pending}>{pending ? "Please wait..." : mode === "sign-up" ? "Continue" : "Log in"}</button>
           <div className="or"><span />OR<span /></div>
           <div className="social-row">
-            <button type="button" onClick={() => void socialLogin("google")}><img src={`${A}/4e027.svg`} alt="" />Google</button>
-            <button type="button" onClick={() => void socialLogin("linkedin_oidc")}><img src={`${A}/48100.svg`} alt="" />LinkedIn</button>
-            <button type="button" onClick={() => document.querySelector<HTMLInputElement>('.auth-form input[type="email"]')?.focus()}><img src={`${A}/5ab47.svg`} alt="" />Mail</button>
+            <button type="button" disabled={pending} onClick={() => void socialLogin("google")}><img src={`${A}/4e027.svg`} alt="" />Continue with Google</button>
+            <button type="button" disabled={pending} onClick={() => void socialLogin("linkedin_oidc")}><img src={`${A}/48100.svg`} alt="" />Continue with LinkedIn</button>
           </div>
           <button type="button" className="back-link" onClick={back}>← Choose a different role</button>
           <small className="safe-note">Your payment stays safe in escrow until you approve the work.</small>
@@ -841,7 +855,7 @@ function ClientProjectsPage({ projects, create }: { projects: typeof clientProje
 }
 
 function PostedJobsPage({ jobs, create, openHire }: { jobs: PostedJob[]; create: () => void; openHire: (designer: (typeof recommendedDesigners)[number], job: PostedJob) => void }) {
-  const [expanded, setExpanded] = useState(jobs[0]?.id ?? null);
+  const [expanded, setExpanded] = useState<string | null>(jobs[0]?.id ?? null);
   return <>
     <ClientPageHeader eyebrow="Hiring activity" title="Posted jobs & responses" description="Review every proposal and choose who you want to discuss the project with." action={<button className="primary-button" onClick={create}>Post a job <span>+</span></button>} />
     {jobs.length === 0 ? <div className="client-empty"><h2>No jobs posted yet</h2><p>Post a brief to start receiving designer proposals.</p><button className="primary-button" onClick={create}>Create your first job</button></div> : <div className="posted-job-list">{jobs.map((job) => {
@@ -1160,7 +1174,7 @@ function ClientDashboard({ logout, userId }: { logout: () => void; userId: strin
         const designer = recommendedDesigners.find((item) => item.name === selectedDesigner)!;
         return <div className="designer-profile-overlay" role="dialog" aria-modal="true" aria-label={`${designer.name} profile`}><button className="overlay-backdrop" onClick={() => setSelectedDesigner(null)} aria-label="Close profile" /><section className="designer-profile-panel"><button className="profile-close" onClick={() => setSelectedDesigner(null)}>Close</button><div className="designer-profile-head"><img src={`${A}/${designer.avatar}`} alt="" /><div><span className="pill success">Identity verified</span><h2>{designer.name}</h2><p>{designer.title} • Ahmedabad, India</p><b>★ {designer.rating} • 32 completed projects</b></div></div><p className="designer-profile-bio">Multi-disciplinary designer focused on thoughtful brand systems, accessible digital experiences, and production-ready project delivery with clear human–AI disclosure.</p><div className="tag-row">{["Brand Identity", "UI/UX Design", "Typography", "Design Systems"].map((item) => <span key={item}>{item}</span>)}</div><h3>Selected portfolio work</h3><div className="profile-work-grid">{designer.works.map((work) => <img src={`${A}/${work}`} alt="" key={work} />)}</div><div className="profile-disclosure"><b>AI usage disclosure</b><span>{designer.ai}</span></div><footer><button className="outline-button" onClick={() => toggleSaved(designer.name)}>{savedDesigners.includes(designer.name) ? "Saved to shortlist" : "Save profile"}</button><button className="primary-button" onClick={() => openHire(designer)}>Start hiring discussion</button></footer></section></div>;
       })()}
-      {hire && <HireFlow designer={hire.designer} jobs={jobs} initialJob={hire.job} projectId={hire.projectId} close={() => setHire(null)} hired={(job, designer) => { setProjects([{ title: job.title, description: job.description, budget: job.budget, progress: 0, ai: designer.ai }, ...projects]); setNotice(`Project details saved for discussion with ${designer.name}.`); }} />}
+      {hire && <HireFlow designer={hire.designer} jobs={jobs} initialJob={hire.job} projectId={hire.projectId} close={() => setHire(null)} hired={(job, designer) => { setProjects([{ title: job.title, description: job.description, budget: String(job.budget), progress: 0, ai: designer.ai }, ...projects]); setNotice(`Project details saved for discussion with ${designer.name}.`); }} />}
     </div>
   );
 }
@@ -1171,12 +1185,49 @@ export default function App() {
   const [role, setRole] = useState<Role>("designer");
   const [authMode, setAuthMode] = useState<AuthMode>("sign-up");
   const [userId, setUserId] = useState("");
+  const [oauthError, setOAuthError] = useState("");
   useEffect(() => {
     void supabase.auth.getSession().then(async ({ data }) => {
+      const params = new URLSearchParams(window.location.search);
+      const callbackError = params.get("error_description") || params.get("error");
+      const pendingRole = window.localStorage.getItem("findright.oauth.role");
+      const pendingProvider = window.localStorage.getItem("findright.oauth.provider");
+      if (callbackError) {
+        if (pendingRole === "client" || pendingRole === "designer") setRole(pendingRole);
+        setAuthMode("sign-in");
+        setOAuthError(callbackError.replace(/\+/g, " "));
+        setStage("auth");
+        window.localStorage.removeItem("findright.oauth.role");
+        window.localStorage.removeItem("findright.oauth.provider");
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
       const user = data.session?.user;
-      if (!user?.email_confirmed_at) return;
+      if (!user) {
+        if (pendingRole === "client" || pendingRole === "designer") {
+          setRole(pendingRole);
+          setAuthMode("sign-in");
+          setStage("auth");
+          setOAuthError("Sign-in did not finish. Check that this provider is enabled and its callback URLs are configured.");
+          window.localStorage.removeItem("findright.oauth.role");
+          window.localStorage.removeItem("findright.oauth.provider");
+        }
+        return;
+      }
+      const isOAuthUser = user.app_metadata.provider === "google" || user.app_metadata.provider === "linkedin_oidc";
+      const roleFromOAuth = pendingRole === "client" || pendingRole === "designer" ? pendingRole : null;
+      if (!user.email_confirmed_at && !isOAuthUser) return;
       setUserId(user.id);
-      const metadata = user.user_metadata ?? {};
+      let metadata = user.user_metadata ?? {};
+      if (roleFromOAuth) {
+        setRole(roleFromOAuth);
+        if (metadata.role !== roleFromOAuth) {
+          const { data: updated } = await supabase.auth.updateUser({ data: { role: roleFromOAuth, full_name: metadata.full_name || user.email?.split("@")[0] || "FindRight member" } });
+          metadata = updated.user?.user_metadata ?? { ...metadata, role: roleFromOAuth };
+        }
+      }
+      window.localStorage.removeItem("findright.oauth.role");
+      window.localStorage.removeItem("findright.oauth.provider");
       const savedRole = metadata.role;
       if (savedRole === "client" || savedRole === "designer") setRole(savedRole);
       if (savedRole !== "client") { setStage("app"); return; }
@@ -1234,7 +1285,7 @@ export default function App() {
   const logout = () => { void supabase.auth.signOut(); setView("home"); setStage("landing"); };
   if (stage === "landing") return <Landing begin={begin} />;
   if (stage === "role") return <RoleSelection mode={authMode} choose={chooseRole} back={() => setStage("landing")} />;
-  if (stage === "auth") return <AuthScreen role={role} mode={authMode} setMode={setAuthMode} continueFlow={authenticate} back={() => setStage("role")} />;
+  if (stage === "auth") return <AuthScreen role={role} mode={authMode} setMode={setAuthMode} continueFlow={authenticate} back={() => setStage("role")} initialError={oauthError} />;
   if (stage === "onboarding") return <Onboarding role={role} finish={finishOnboarding} back={() => setStage("auth")} />;
   if (stage === "company-verification") return <CompanyVerificationGate verified={() => setStage("app")} updateDetails={() => setStage("onboarding")} logout={logout} />;
   if (role === "client") return <ClientDashboard logout={logout} userId={userId} />;
