@@ -633,25 +633,49 @@ const applicantProposals: Record<string, { proposal: string; amount: string; res
   "Riya Mehta": { proposal: "I’ll build a flexible brand identity with motion-ready assets and a clear handoff for launch.", amount: "₹44,000", response: "Responded 4 hours ago" },
 };
 
-function ClientSidebar({ active, setActive, logout }: { active: string; setActive: (value: string) => void; logout: () => void }) {
+function ClientIcon({ name, size = 20 }: { name: string; size?: number }) {
+  const paths: Record<string, React.ReactNode> = {
+    home: <><path d="m3 10 9-7 9 7" /><path d="M5 9v11h14V9M9 20v-7h6v7" /></>,
+    find: <><circle cx="10.8" cy="10.8" r="7.2" /><path d="m16 16 5 5" /></>,
+    jobs: <><rect x="3" y="7" width="18" height="14" rx="2" /><path d="M8 7V5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M3 12h18M10 12v2h4v-2" /></>,
+    projects: <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+    chat: <><path d="M20 11.5a7.5 7.5 0 0 1-8 7.5 8.8 8.8 0 0 1-3.5-.7L4 20l1.4-3.5A7.1 7.1 0 0 1 4 12c0-4.1 3.6-7.5 8-7.5s8 3.1 8 7Z" /></>,
+    settings: <><circle cx="12" cy="12" r="3" /><path d="m19.4 15 .1.1 1.2 1-1.5 2.6-1.5-.6a7.8 7.8 0 0 1-1.7 1l-.2 1.6h-3l-.3-1.6a7.8 7.8 0 0 1-1.7-1l-1.5.6-1.5-2.6 1.2-1a7.1 7.1 0 0 1 0-2l-1.2-1 1.5-2.6 1.5.6a7.8 7.8 0 0 1 1.7-1L12 7.4h3l.3 1.6a7.8 7.8 0 0 1 1.7 1l1.5-.6 1.5 2.6-1.2 1a7.1 7.1 0 0 1 .6 2Z" /></>,
+    user: <><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></>,
+    shield: <><path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11Z" /><path d="m9 12 2 2 4-4" /></>,
+    sparkle: <><path d="m12 3 1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3Z" /><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z" /></>,
+    plus: <><path d="M12 5v14M5 12h14" /></>,
+    switch: <><path d="m16 3 4 4-4 4M20 7H4m4 14-4-4 4-4m-4 4h16" /></>,
+    check: <><circle cx="12" cy="12" r="10" /><path d="m7 12 3 3 7-7" /></>,
+  };
+  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] ?? paths.projects}</svg>;
+}
+
+function ClientSidebar({ active, setActive }: { active: string; setActive: (value: string) => void }) {
   const items = [
-    ["home", "Home", "3cb37.svg"],
-    ["find", "Find", "cae0c.svg"],
-    ["jobs", "Jobs", "754f2.svg"],
-    ["projects", "Projects", "eb6a2.svg"],
-    ["chat", "Chat", "0dcf1.svg"],
+    ["home", "Home", "home"],
+    ["find", "Find", "find"],
+    ["jobs", "Jobs", "jobs"],
+    ["projects", "Projects", "projects"],
+    ["chat", "Chat", "chat"],
   ];
   return (
     <aside className="client-sidebar">
-      <button className="client-logo" onClick={() => setActive("home")}><img src={`${A}/10540.svg`} alt="FindRight" /></button>
-      <nav>{items.map(([id, label, icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => setActive(id)}><img src={`${A}/${icon}`} alt="" /><span>{label}</span></button>)}</nav>
-      <div className="client-side-bottom">
-        <button className={active === "profile" ? "active" : ""} onClick={() => setActive("profile")}><img src={`${A}/a27af.svg`} alt="" /><span>Profile</span></button>
-        <button className={active === "settings" ? "active" : ""} onClick={() => setActive("settings")}><img src={`${A}/e7255.svg`} alt="" /><span>Settings</span></button>
-        <button onClick={logout}><img src={`${A}/e3424.svg`} alt="" /><span>Log out</span></button>
-      </div>
+      <button className="client-logo" onClick={() => setActive("home")} aria-label="FindRight home"><span className="client-logo-mark"><ClientIcon name="check" size={26} /></span></button>
+      <nav>{items.map(([id, label, icon]) => <button key={id} className={active === id ? "active" : ""} onClick={() => setActive(id)} aria-label={label}><ClientIcon name={icon} size={21} /><span>{label}</span></button>)}</nav>
     </aside>
   );
+}
+
+function ClientTopbar({ setActive, startJob, credits }: { setActive: (value: string) => void; startJob: () => void; credits: number }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  return <header className="client-topbar">
+    <div className="client-brand-lockup"><span className="client-logo-mark"><ClientIcon name="check" size={25} /></span><b>FindRight</b></div>
+    <div className="topbar-trust"><span className="topbar-badge escrow"><ClientIcon name="shield" size={16} /> Escrow Protected</span><span className="topbar-badge verified"><ClientIcon name="check" size={16} /> Verified Co: Noble Paws</span></div>
+    <div className="topbar-actions"><span className="topbar-credit"><ClientIcon name="sparkle" size={16} /><b>Starter Credits: <i>{credits}</i></b><span>15% off</span></span><span className="topbar-role"><ClientIcon name="switch" size={16} /> Role: <b>Client</b></span><button className="topbar-post-button" onClick={startJob}><ClientIcon name="plus" size={18} /> Post a Job</button>
+      <div className="topbar-profile"><button className="topbar-avatar" onClick={() => setMenuOpen(!menuOpen)} aria-label="Open account menu" aria-expanded={menuOpen}>MP</button>{menuOpen && <div className="topbar-menu"><button onClick={() => { setActive("profile"); setMenuOpen(false); }}><ClientIcon name="user" size={16} /> Profile</button><button onClick={() => { setActive("settings"); setMenuOpen(false); }}><ClientIcon name="settings" size={16} /> Settings</button></div>}</div>
+    </div>
+  </header>;
 }
 
 function JobPostFlow({ close, posted, creditsRemaining }: { close: () => void; posted: (job: Omit<PostedJob, "id" | "applicants" | "creditReserved">) => void; creditsRemaining: number }) {
@@ -907,6 +931,7 @@ function CompanyVerificationGate({ verified, updateDetails, logout }: { verified
 
 function ClientDashboard({ logout, userId }: { logout: () => void; userId: string }) {
   const [active, setActive] = useState("home");
+  const [homeTab, setHomeTab] = useState("activity");
   const [posting, setPosting] = useState(false);
   const [projects, setProjects] = useState(clientProjects);
   const [jobs, setJobs] = useState<PostedJob[]>(samplePostedJobs);
@@ -935,12 +960,15 @@ function ClientDashboard({ logout, userId }: { logout: () => void; userId: strin
   if (posting) return <JobPostFlow close={() => setPosting(false)} creditsRemaining={creditsRemaining} posted={(job) => { const nextJob: PostedJob = { ...job, id: `job-${Date.now()}`, applicants: [] }; setJobs([nextJob, ...jobs]); if (job.creditReserved) setCreditsRemaining(Math.max(0, creditsRemaining - 1)); setPosting(false); setActive("jobs"); setNotice(job.creditReserved ? "Job posted. A starter credit is reserved for your first hire." : "Job posted. Responses will appear in Posted jobs."); }} />;
   return (
     <div className="client-shell">
-      <ClientSidebar active={active} setActive={setActive} logout={logout} />
+      <ClientTopbar setActive={setActive} startJob={() => setPosting(true)} credits={creditsRemaining} />
+      <ClientSidebar active={active} setActive={setActive} />
       <main className="client-main">
         {notice && <div className="success-notice">{notice}<button onClick={() => setNotice("")}>Dismiss</button></div>}
-        {active === "home" && <><header className="client-welcome"><h1>Welcome, Mr.Parekh</h1><button className="primary-button" onClick={() => setPosting(true)}>Create a new project <span>+</span></button></header><div className="client-escrow-status"><b>Escrow protection</b><span>10% advance after project confirmation · Remaining 90% after approved delivery</span></div><div className="client-dashboard-grid">
+        {active === "home" && <><header className="client-welcome"><div><h1>Welcome, Mr. Parekh</h1><p>Noble Paws Pet Health Co. · Manage active projects, escrow contracts & verified rising designers</p></div><div className="dashboard-discipline-pills">{["UI/UX Design", "Graphic Design", "Product Design", "Motion Design"].map((label, index) => <button className={index === 0 ? "active" : ""} onClick={() => setActive("find")} key={label}>{label}</button>)}</div></header><div className="client-escrow-status"><b><ClientIcon name="shield" size={16} /> Escrow Protected</b><span>10% advance after project confirmation · Remaining 90% after approved delivery</span></div><nav className="dashboard-tabs" aria-label="Dashboard activity"><button className={homeTab === "activity" ? "active" : ""} onClick={() => { setHomeTab("activity"); setActive("home"); }}>All Activity (5)</button><button className={homeTab === "jobs" ? "active" : ""} onClick={() => { setHomeTab("jobs"); setActive("jobs"); }}>Posted Jobs & Applicants <i>{jobs.length} live</i></button><button className={homeTab === "contracts" ? "active" : ""} onClick={() => { setHomeTab("contracts"); setActive("projects"); }}>Active Contracts <i className="green">{projects.length} in escrow</i></button></nav><div className="client-dashboard-grid">
           <section className="client-projects">
-            <h2>Active Projects</h2>
+            <div className="dashboard-section-heading"><h2><i /> Your Posted Jobs & Replies ({jobs.length})</h2><button onClick={() => { setHomeTab("jobs"); setActive("jobs"); }}>All Posted Jobs & Applicants →</button><button className="text-post-job" onClick={() => setPosting(true)}><ClientIcon name="plus" size={15} /> Post Job</button></div>
+            {jobs.slice(0, 1).map((job) => { const responders = job.applicants.slice(0, 3); return <article className="home-posted-job" key={job.id}><div className="home-job-heading"><div><span className="job-status-pill">● Open for Proposals</span><span className="posted-job-category">{job.category}</span><h3>{job.title}</h3><p>Budget: {job.budget} · Due {job.deadline}</p></div><button className="primary-button" onClick={() => { setHomeTab("jobs"); setActive("jobs"); }}><ClientIcon name="user" size={16} /> Review Proposals ({job.applicants.length})</button></div><button className="home-job-replies" onClick={() => { setHomeTab("jobs"); setActive("jobs"); }}><span className="reply-avatars">{responders.map((name) => <i key={name}>{name.split(" ").map((part) => part[0]).join("")}</i>)}</span><span><b>{job.applicants.length} Freelancers Replied & Sent Proposals</b><small>{responders.join(", ")}{job.applicants.length > responders.length ? ` +${job.applicants.length - responders.length} more` : ""}</small></span><strong>View Replies & Proposals →</strong></button></article>; })}
+            <div className="dashboard-section-heading active-project-heading"><h2>Active Projects & Escrow Contracts ({projects.length})</h2><button className="primary-button" onClick={() => setPosting(true)}><ClientIcon name="plus" size={16} /> Create Project</button></div>
             {projects.map((project) => <article key={project.title}><div><h3>{project.title}</h3><p>{project.description}</p></div><button onClick={() => setActive("projects")}>Read Brief</button><span className="client-ai">{project.ai}</span><div className="client-project-meta"><b>Budget: {project.budget}</b><b>Timeline: 2–3 weeks · {project.progress}%</b></div><div className="client-progress"><i style={{ width: `${project.progress}%` }} /></div></article>)}
           </section>
           <section className="designer-results">

@@ -111,3 +111,59 @@ button{cursor:pointer}
 .budget-range{display:grid;grid-template-columns:1fr auto;gap:7px;margin:0 0 20px;padding:13px 15px;background:#fff;border:1px solid #d9cde1;border-radius:11px;color:#665879;font-size:10px}.budget-range b{color:#8324ff}.budget-range input{grid-column:1/-1;width:100%;accent-color:#8324ff}.client-search-row select{min-width:180px}
 .client-escrow-status{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:12px 16px;margin:12px 0 8px;background:#f2fff9;border:1px solid #bcebd8;border-radius:11px;color:#087a59;font-size:10px}.client-escrow-status span{color:#4c7667}
 .applicant-portfolio{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-bottom:13px}.applicant-portfolio img{width:100%;height:64px;object-fit:cover;border-radius:7px}
+
+/* FindRight client workspace: clean white navigation, violet actions, and calm neutral surfaces. */
+.client-shell{min-height:100dvh;background:#faf9f7;color:#17141d}
+.client-topbar{height:76px;position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:20px;padding:0 clamp(18px,2vw,38px);background:#fff;border-bottom:1px solid #ece9ef}
+.client-brand-lockup{height:100%;display:flex;align-items:center;gap:12px;padding-right:27px;border-right:1px solid #e9e6ed;color:#17141d;white-space:nowrap}
+.client-brand-lockup>b{font:700 23px "Poppins:Bold",Poppins,Inter,sans-serif;letter-spacing:-1.1px}
+.client-logo-mark{width:40px;height:40px;display:grid;place-items:center;color:#7040f5;border:2px solid #7040f5;border-radius:50%;background:#fbf9ff}
+.client-logo{width:54px;height:54px;border:0;background:transparent;padding:0}
+.topbar-trust,.topbar-actions{display:flex;align-items:center;gap:10px;min-width:0}
+.topbar-trust{flex:1;overflow:hidden}
+.topbar-badge,.topbar-credit,.topbar-role{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;border-radius:999px;font-size:12px;white-space:nowrap}
+.topbar-badge.escrow{color:#008e65;border:1px solid #a3f2d4;background:#f2fff9}
+.topbar-badge.verified{max-width:270px;overflow:hidden;text-overflow:ellipsis;color:#7040f5;border:1px solid #e6d3ff;background:#fbf7ff}
+.topbar-actions{margin-left:auto;justify-content:flex-end}
+.topbar-credit{color:#7040f5;border:1px solid #e6d3ff;background:#fbf7ff}.topbar-credit i{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#7040f5;color:#fff;font-style:normal;font-weight:700}.topbar-credit>span{color:#827d8a}
+.topbar-role{background:#f4f3f6;color:#77717f}.topbar-role b{color:#26212c}
+.topbar-post-button{height:42px;padding:0 18px;display:inline-flex;align-items:center;gap:8px;border:0;border-radius:13px;background:#7040f5;color:#fff;font-size:13px;font-weight:600;white-space:nowrap;box-shadow:0 3px 8px #7040f528}
+.topbar-profile{position:relative;margin-left:4px}.topbar-avatar{width:40px;height:40px;border:0;border-radius:50%;background:#17141d;color:#fff;font-size:12px;font-weight:700}
+.topbar-menu{position:absolute;right:0;top:50px;width:175px;padding:6px;background:#fff;border:1px solid #ece9ef;border-radius:14px;box-shadow:0 12px 35px #17141d1c}
+.topbar-menu button{width:100%;display:flex;align-items:center;gap:9px;padding:10px;border:0;border-radius:9px;background:transparent;color:#35303d;text-align:left;font-size:12px}.topbar-menu button:hover{background:#f6f2ff;color:#7040f5}
+.client-sidebar{position:fixed;inset:76px auto 0 0;width:102px;padding:28px 12px 18px;align-items:center;background:#fff;border-right:1px solid #ece9ef;z-index:12}
+.client-sidebar .client-logo{display:none}
+.client-sidebar nav{width:100%;margin:0;gap:9px}
+.client-sidebar nav button{width:100%;height:70px;gap:5px;border:0;border-radius:18px;background:transparent;color:#737c8e;font-size:11px}
+.client-sidebar nav button svg{color:currentColor}
+.client-sidebar nav button.active{background:#7040f5;color:#fff;box-shadow:0 4px 9px #7040f540}
+.client-sidebar nav button:hover:not(.active){background:#f4efff;color:#7040f5}
+.client-side-bottom{display:none}
+.client-main{max-width:1720px;margin-left:102px;padding:40px clamp(26px,5vw,86px) 70px}
+.client-welcome{position:static;display:flex;justify-content:space-between;align-items:center;gap:20px;background:transparent}
+.client-welcome h1{font:800 clamp(28px,2.3vw,38px) "Poppins:ExtraBold",Poppins,Inter,sans-serif;letter-spacing:-1.4px;color:#17141d}
+.client-welcome .primary-button,.client-main .primary-button,.topbar-post-button{background:#7040f5;color:#fff;border-color:#7040f5;border-radius:13px}
+.client-escrow-status{margin:12px 0 22px;padding:11px 15px;border-radius:12px;background:#f2fff9;border-color:#b8efd9;color:#078a63}
+.client-dashboard-grid{grid-template-columns:minmax(0,1.12fr) minmax(380px,.88fr);gap:34px;margin-top:24px}
+.client-projects>h2,.designer-results h2,.client-page-header h1,.client-main h2,.client-main h3{color:#17141d}
+.client-projects article,.designer-card,.directory-card,.posted-job-card,.client-settings-card,.client-form-card,.project-table>article,.client-chat-layout>section{background:#fff;border:1px solid #ece7f1;border-radius:22px;box-shadow:0 2px 5px #1e172708}
+.client-projects article{padding:22px;border-radius:22px}
+.designer-card{padding:20px;border-radius:24px}
+.designer-results .designer-filters button,.designer-filters button{border:1px solid #e8e2ee;border-radius:14px;background:#fff;color:#403a48}
+.designer-filters button.active,.designer-filters button:hover{background:#7040f5;color:#fff;border-color:#7040f5}
+.client-main .outline-button,.client-main button:not(.primary-button):not(.active):not(.topbar-avatar):not(.topbar-post-button){border-radius:12px}
+.client-page-header{position:static;padding:0 0 22px;background:transparent;border:0;backdrop-filter:none}
+.client-page-header h1{font-weight:750;letter-spacing:-.7px}
+.posted-job-card{border-color:#e6d2ff;box-shadow:0 2px 5px #7040f50c}
+.posted-job-summary{padding:22px 25px;background:transparent}
+.applicant-list{background:#fcfaff;border-color:#f0e5ff}
+.applicant-card{border-color:#eee5f7;border-radius:16px;box-shadow:0 2px 4px #17141d08}
+.client-search-row label,.client-search-row select,.designer-filters button,.job-input input,.client-chat-layout>section>footer input{border-radius:12px}
+.client-settings-card,.client-form-card{padding:24px}
+.settings-action-row .danger-button{background:#fff4f4;color:#b42335;border:1px solid #ffd3d7}
+.client-welcome>div:first-child{min-width:0}.client-welcome>div:first-child>p{margin:4px 0 0;color:#737c8e;font-size:13px}
+.dashboard-discipline-pills{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:8px}.dashboard-discipline-pills button{padding:10px 16px;border:1px solid #e8e2ee;border-radius:13px;background:#fff;color:#403a48;font-size:12px}.dashboard-discipline-pills button.active{background:#7040f5;color:#fff;border-color:#7040f5}
+.dashboard-tabs{display:flex;gap:9px;margin:22px 0 2px;overflow-x:auto}.dashboard-tabs button{display:inline-flex;align-items:center;gap:9px;flex:none;padding:11px 17px;border:1px solid #e7e3eb;border-radius:15px;background:#fff;color:#37313e;font-size:12px}.dashboard-tabs button.active{background:#17141d;color:#fff;border-color:#17141d}.dashboard-tabs i{padding:4px 9px;border-radius:999px;background:#f1e9ff;color:#7040f5;font-size:10px;font-style:normal}.dashboard-tabs i.green{background:#d8faeb;color:#078a63}
+.dashboard-section-heading{display:flex;align-items:center;gap:13px;margin:10px 0 13px}.dashboard-section-heading h2{display:flex;align-items:center;gap:9px;flex:1;margin:0;font-size:18px}.dashboard-section-heading h2>i{width:12px;height:12px;border-radius:50%;background:#9b20f5}.dashboard-section-heading>button{display:inline-flex;align-items:center;gap:5px;padding:8px 10px;border:0;background:transparent;color:#7040f5;font-size:11px;font-weight:600;white-space:nowrap}.dashboard-section-heading>button.primary-button{padding:10px 14px}.home-posted-job{padding:20px!important;border:1px solid #e7ccff!important;border-radius:24px!important;box-shadow:0 2px 4px #7040f510!important}.home-job-heading{display:flex;align-items:center;justify-content:space-between;gap:15px}.home-job-heading h3{margin:8px 0 3px;font-size:17px}.home-job-heading p{margin:0;color:#737c8e;font-size:12px}.job-status-pill{display:inline-block;margin-right:9px;padding:5px 10px;border:1px solid #c8dcff;border-radius:999px;background:#f1f7ff;color:#1c57b8;font-size:10px}.home-job-heading>.primary-button{display:inline-flex;align-items:center;gap:7px;white-space:nowrap}.home-job-replies{width:100%;display:flex;align-items:center;gap:12px;margin-top:17px;padding:13px 15px;border:1px solid #f0e4ff!important;border-radius:18px!important;background:#fcfaff!important;text-align:left}.reply-avatars{display:flex;flex:none;padding-left:2px}.reply-avatars i{width:33px;height:33px;margin-left:-3px;display:grid;place-items:center;border:2px solid #fff;border-radius:50%;background:#eadcff;color:#7040f5;font-size:9px;font-style:normal;font-weight:700}.reply-avatars i:nth-child(2n){background:#dcf8e9;color:#078a63}.home-job-replies>span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}.home-job-replies b{font-size:12px}.home-job-replies small{overflow:hidden;color:#737c8e;text-overflow:ellipsis;white-space:nowrap;font-size:10px}.home-job-replies>strong{color:#7040f5;white-space:nowrap;font-size:11px}.active-project-heading{margin-top:26px}.active-project-heading h2{font-size:18px}
+@media(max-width:1100px){.client-topbar{gap:12px;padding:0 18px}.topbar-trust{display:none}.client-main{padding-left:30px;padding-right:30px}.client-dashboard-grid{grid-template-columns:1fr}.designer-results{max-width:none}}
+@media(max-width:700px){.client-topbar{height:auto;min-height:68px;flex-wrap:wrap;padding:10px 14px;gap:8px}.client-brand-lockup{height:42px;padding-right:0;border:0}.client-brand-lockup>b{font-size:19px}.client-logo-mark{width:34px;height:34px}.topbar-actions{gap:7px}.topbar-credit{display:none}.topbar-role{display:none}.topbar-post-button{height:38px;padding:0 11px;font-size:11px}.topbar-avatar{width:36px;height:36px}.client-sidebar{inset:auto 0 0;width:100%;height:70px;padding:5px 7px;flex-direction:row;border-right:0;border-top:1px solid #ece9ef}.client-sidebar nav{display:flex;flex-direction:row;justify-content:space-around;gap:3px}.client-sidebar nav button{height:58px;flex:1;gap:2px;border-radius:12px;font-size:9px}.client-sidebar nav button svg{width:19px;height:19px}.client-main{margin:0;padding:24px 16px 96px}.client-welcome{align-items:flex-start;flex-direction:column}.client-welcome h1{font-size:27px}.client-dashboard-grid{grid-template-columns:1fr;gap:20px}.client-page-header{gap:10px}.client-settings-card,.client-form-card{padding:17px}.topbar-menu{position:fixed;top:63px;right:10px}.dashboard-discipline-pills{justify-content:flex-start}.dashboard-tabs{margin:14px 0}.dashboard-tabs button{padding:9px 12px;font-size:10px}.dashboard-section-heading{align-items:flex-start;flex-wrap:wrap}.dashboard-section-heading h2{flex-basis:100%;font-size:15px}.home-job-heading{align-items:flex-start;flex-direction:column}.home-job-replies{align-items:flex-start;flex-wrap:wrap}.home-job-replies>strong{margin-left:44px}.home-posted-job{padding:15px!important}}
