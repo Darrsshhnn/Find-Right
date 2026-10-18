@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import { projectId, publicAnonKey } from "../utils/supabase/info";
+import FreelancerPortal, { FreelancerSetup } from "./FreelancerPortal";
 
 type View = "home" | "projects" | "workspace" | "progression" | "profile" | "settings";
 type SettingsTab = "profile" | "reputation" | "ai" | "privacy";
@@ -1282,24 +1283,18 @@ export default function App() {
     }
     setStage("company-verification");
   };
+  const finishFreelancerOnboarding = async (profile: Record<string, string>) => {
+    const { data, error } = await supabase.auth.updateUser({ data: { role: "designer", full_name: profile.full_name, freelancer_profile: profile } });
+    if (error) throw error;
+    if (data.user) setUserId(data.user.id);
+    setStage("app");
+  };
   const logout = () => { void supabase.auth.signOut(); setView("home"); setStage("landing"); };
   if (stage === "landing") return <Landing begin={begin} />;
   if (stage === "role") return <RoleSelection mode={authMode} choose={chooseRole} back={() => setStage("landing")} />;
   if (stage === "auth") return <AuthScreen role={role} mode={authMode} setMode={setAuthMode} continueFlow={authenticate} back={() => setStage("role")} initialError={oauthError} />;
-  if (stage === "onboarding") return <Onboarding role={role} finish={finishOnboarding} back={() => setStage("auth")} />;
+  if (stage === "onboarding") return role === "designer" ? <FreelancerSetup finish={finishFreelancerOnboarding} back={() => setStage("auth")} /> : <Onboarding role={role} finish={finishOnboarding} back={() => setStage("auth")} />;
   if (stage === "company-verification") return <CompanyVerificationGate verified={() => setStage("app")} updateDetails={() => setStage("onboarding")} logout={logout} />;
   if (role === "client") return <ClientDashboard logout={logout} userId={userId} />;
-  return (
-    <div className="app-shell">
-      <Sidebar view={view} setView={setView} />
-      <div className="content-shell">
-        {view === "home" && <Dashboard setView={setView} />}
-        {view === "projects" && <LiveProjects setView={setView} />}
-        {view === "workspace" && <Workspace />}
-        {view === "progression" && <Progression />}
-        {view === "profile" && <Profile />}
-        {view === "settings" && <Settings logout={logout} />}
-      </div>
-    </div>
-  );
+  return <FreelancerPortal logout={logout} userId={userId} />;
 }
