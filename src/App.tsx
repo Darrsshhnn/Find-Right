@@ -29,10 +29,10 @@ async function companyVerificationRequest(method: "GET" | "POST", payload?: { co
 }
 
 const navItems: { id: View; label: string; icon: string }[] = [
-  { id: "home", label: "Home", icon: "8c6e6.svg" },
-  { id: "projects", label: "Projects", icon: "eb6a2.svg" },
-  { id: "workspace", label: "Workspace", icon: "ea8d0.svg" },
-  { id: "progression", label: "Progression", icon: "754f2.svg" },
+  { id: "home", label: "Home", icon: "home" },
+  { id: "projects", label: "Projects", icon: "projects" },
+  { id: "workspace", label: "Workspace", icon: "chat" },
+  { id: "progression", label: "Progression", icon: "sparkle" },
 ];
 
 const opportunities = [
@@ -93,33 +93,30 @@ const disciplines = [
 function Logo() {
   return (
     <div className="logo" aria-label="FindRight">
-      <span className="logo-mark"><img src={`${A}/e88ce.svg`} alt="" /></span>
+      <span className="logo-mark"><ClientIcon name="check" size={27} /></span>
       <strong>FindRight</strong>
     </div>
   );
 }
 
-function Sidebar({ view, setView, logout }: { view: View; setView: (view: View) => void; logout: () => void }) {
+function Sidebar({ view, setView }: { view: View; setView: (view: View) => void }) {
   return (
     <aside className="sidebar">
       <button className="logo-button" onClick={() => setView("home")}><Logo /></button>
       <nav className="main-nav" aria-label="Main navigation">
         {navItems.map((item) => (
           <button key={item.id} className={view === item.id ? "nav-item active" : "nav-item"} onClick={() => setView(item.id)}>
-            <img src={`${A}/${item.icon}`} alt="" />
+            <ClientIcon name={item.icon} size={21} />
             <span>{item.label}</span>
           </button>
         ))}
       </nav>
       <div className="secondary-nav">
         <button className={view === "profile" ? "nav-item active" : "nav-item"} onClick={() => setView("profile")}>
-          <img src={`${A}/a27af.svg`} alt="" /><span>Profile</span>
+          <ClientIcon name="user" size={21} /><span>Profile</span>
         </button>
         <button className={view === "settings" ? "nav-item active" : "nav-item"} onClick={() => setView("settings")}>
-          <img src={`${A}/e7255.svg`} alt="" /><span>Settings</span>
-        </button>
-        <button className="nav-item logout-item" onClick={logout}>
-          <img src={`${A}/e3424.svg`} alt="" /><span>Log out</span>
+          <ClientIcon name="settings" size={21} /><span>Settings</span>
         </button>
       </div>
     </aside>
@@ -260,7 +257,7 @@ function Review({ name, body, meta }: { name: string; body: string; meta: string
   return <article className="review card"><div><h3>{name}</h3><b>★ 5.0</b></div><p>{body}</p><small>{meta}</small></article>;
 }
 
-function Settings() {
+function Settings({ logout }: { logout: () => void }) {
   const [tab, setTab] = useState<SettingsTab>("profile");
   const [choices, setChoices] = useState<Record<string, AiChoice>>(
     Object.fromEntries(disciplines.map(([name], index) => [name, index === 1 ? "AI ideation" : "No AI"])),
@@ -287,7 +284,7 @@ function Settings() {
           <div className="settings-intro"><img src={`${A}/1515f.svg`} alt="" /><div><h3>Public AI usage disclosure per discipline</h3><p>Instead of hiding AI or making vague claims, self-report your level per design category. These badges appear publicly on your profile so clients can hire with confidence.</p></div></div>
           {disciplines.map(([name, description]) => <div className="discipline" key={name}><div><h3>{name}</h3><p>{description}</p></div><div className="segmented">{(["No AI", "AI ideation", "AI execution"] as AiChoice[]).map((choice) => <button key={choice} className={choices[name] === choice ? "active" : ""} onClick={() => setChoices({ ...choices, [name]: choice })}>{choice}</button>)}</div></div>)}
         </section>}
-        {tab === "privacy" && <section className="privacy-card card"><h2>Account credentials & privacy controls</h2><p>Manage authentication, communication alerts, and profile privacy.</p><Toggle label="Project and message alerts" detail="Receive an email when clients invite or message you." checked={privacy.alerts} change={() => setPrivacy({ ...privacy, alerts: !privacy.alerts })} /><Toggle label="Public profile visibility" detail="Allow verified clients to discover your profile and portfolio." checked={privacy.public} change={() => setPrivacy({ ...privacy, public: !privacy.public })} /><button className="outline-button">Change password</button></section>}
+        {tab === "privacy" && <section className="privacy-card card"><h2>Account credentials & privacy controls</h2><p>Manage authentication, communication alerts, and profile privacy.</p><Toggle label="Project and message alerts" detail="Receive an email when clients invite or message you." checked={privacy.alerts} change={() => setPrivacy({ ...privacy, alerts: !privacy.alerts })} /><Toggle label="Public profile visibility" detail="Allow verified clients to discover your profile and portfolio." checked={privacy.public} change={() => setPrivacy({ ...privacy, public: !privacy.public })} /><div className="designer-settings-actions"><button className="outline-button">Change password</button><button className="settings-logout" onClick={logout}>Log out</button></div></section>}
       </main>
     </>
   );
@@ -1067,14 +1064,14 @@ export default function App() {
   if (role === "client") return <ClientDashboard logout={logout} userId={userId} />;
   return (
     <div className="app-shell">
-      <Sidebar view={view} setView={setView} logout={logout} />
+      <Sidebar view={view} setView={setView} />
       <div className="content-shell">
         {view === "home" && <Dashboard setView={setView} />}
         {view === "projects" && <Projects setView={setView} />}
         {view === "workspace" && <Workspace />}
         {view === "progression" && <Progression />}
         {view === "profile" && <Profile />}
-        {view === "settings" && <Settings />}
+        {view === "settings" && <Settings logout={logout} />}
       </div>
     </div>
   );
