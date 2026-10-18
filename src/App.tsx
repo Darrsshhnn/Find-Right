@@ -28,6 +28,20 @@ async function companyVerificationRequest(method: "GET" | "POST", payload?: { co
   return result as { request: CompanyReview | null };
 }
 
+async function platformRequest<T>(path: string, method: "GET" | "POST" | "PUT" | "PATCH" = "GET", payload?: unknown): Promise<T> {
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  if (!token) throw new Error("Your session expired. Sign in again to continue.");
+  const response = await fetch(`${SERVER_URL}/${path.replace(/^\//, "")}`, {
+    method,
+    headers: { "Content-Type": "application/json", apikey: publicAnonKey, Authorization: `Bearer ${token}` },
+    ...(payload === undefined ? {} : { body: JSON.stringify(payload) }),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(result.error || "FindRight could not save this change. Please try again.");
+  return result as T;
+}
+
 const navItems: { id: View; label: string; icon: string }[] = [
   { id: "home", label: "Home", icon: "home" },
   { id: "projects", label: "Projects", icon: "projects" },
@@ -221,6 +235,46 @@ function Projects({ setView }: { setView: (view: View) => void }) {
       </main>
     </>
   );
+}
+
+function LiveProjects({ setView }: { setView: (view: View) => void }) {
+  const [jobs, setJobs] = useState<PostedJob[]>([]);
+  const [error, setError] = useState("");
+  const [applyTo, setApplyTo] = useState<string | null>(null);
+  const [proposal, setProposal] = useState("");
+  const [amount, setAmount] = useState("");
+  const [timeline, setTimeline] = useState("");
+  const [aiDisclosure, setAiDisclosure] = useState("Human-Made");
+  const [saving, setSaving] = useState(false);
+  const [notice, setNotice] = useState("");
+  const [myProposals, setMyProposals] = useState<any[]>([]);
+  const [myProjects, setMyProjects] = useState<any[]>([]);
+  const [memberId, setMemberId] = useState("");
+  useEffect(() => {
+    void supabase.auth.getUser().then(({ data }) => setMemberId(data.user?.id ?? ""));
+    void Promise.all([platformRequest<{ jobs: PostedJob[] }>("jobs"), platformRequest<{ proposals: any[] }>("proposals/mine"), platformRequest<{ projects: any[] }>("projects")])
+      .then(([jobData, proposalData, projectData]) => { setJobs(jobData.jobs); setMyProposals(proposalData.proposals); setMyProjects(projectData.projects); })
+      .catch((issue) => setError(issue instanceof Error ? issue.message : "Could not load your marketplace data."));
+  }, []);
+  const confirmTerms = async (projectId: string) => {
+    setError("");
+    try { const data = await platformRequest<{ project: any }>(`projects/${projectId}/confirm-agreement`, "POST", {}); setMyProjects((items) => items.map((item) => item.id === projectId ? data.project : item)); }
+    catch (issue) { setError(issue instanceof Error ? issue.message : "Project terms could not be confirmed."); }
+  };
+  const submit = async (job: PostedJob) => {
+    setSaving(true); setError("");
+    try {
+      await platformRequest(`jobs/${job.id}/proposals`, "POST", { proposal, amount: Number(amount), timeline, aiDisclosure });
+      setNotice(`Proposal sent for “${job.title}”.`); setApplyTo(null); setProposal(""); setAmount(""); setTimeline("");
+    } catch (issue) { setError(issue instanceof Error ? issue.message : "Proposal could not be sent."); }
+    finally { setSaving(false); }
+  };
+  return <><Header title="Discover projects" /><main className="page"><section className="section-heading"><div><span className="eyebrow">Your activity</span><h2>Proposals & project discussions</h2></div></section>{myProposals.length === 0 && myProjects.length === 0 ? <p className="empty-state">Your sent proposals and project discussions will appear here.</p> : <div className="list-grid">{myProposals.map((item) => <article className="card" key={item.id}><span className="pill">Proposal: {item.status}</span><p>Job {item.jobId}</p><p>INR {Number(item.amount).toLocaleString("en-IN")} · {item.timeline}</p></article>)}{myProjects.map((item) => <article className="card" key={item.id}><span className="pill">Project: {item.status.replaceAll("_", " ")}</span><h3>{item.title}</h3><p>{item.scope}</p><p>Agreed price: INR {Number(item.price).toLocaleString("en-IN")}</p>{item.status === "agreement" && memberId && !item.confirmations.includes(memberId) && <button className="primary-button" onClick={() => void confirmTerms(item.id)}>Confirm project terms</button>}</article>)}</div>}<div className="filter-bar">{["All disciplines", "Brand identity", "UI/UX & web", "Packaging"].map((item, index) => <button key={item} className={index === 0 ? "chip active" : "chip"}>{item}</button>)}</div>
+    {error && <p className="form-error" role="alert">{error}</p>}{notice && <p className="success-notice" role="status">{notice}<button onClick={() => setNotice("")}>Dismiss</button></p>}
+    {jobs.length ? <div className="list-grid">{jobs.map((job) => <article className="wide-job card" key={job.id}><div><span className="pill">{job.category}</span><h2>{job.title}</h2><p>{job.description}</p><span>Deadline: {job.deadline} · Budget: INR {Number(job.budget).toLocaleString("en-IN")}</span></div><div className="wide-job-side"><button className="primary-button" onClick={() => setApplyTo(applyTo === job.id ? null : job.id)}>View brief & apply</button></div>
+      {applyTo === job.id && <section className="client-form-card"><label>Proposal<textarea value={proposal} onChange={(event) => setProposal(event.target.value)} placeholder="Explain how you will deliver this project" /></label><div className="form-grid"><label>Proposed price (INR)<input type="number" min="1" value={amount} onChange={(event) => setAmount(event.target.value)} /></label><label>Delivery timeline<input value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="e.g. 3 weeks" /></label><label>AI use disclosure<select value={aiDisclosure} onChange={(event) => setAiDisclosure(event.target.value)}><option>Human-Made</option><option>AI-Assisted</option><option>AI-Supported</option></select></label></div><div className="hire-flow-actions"><button className="outline-button" onClick={() => setApplyTo(null)}>Cancel</button><button className="primary-button" disabled={saving} onClick={() => void submit(job)}>{saving ? "Sending…" : "Send proposal"}</button></div></section>}
+    </article>)}</div> : <div className="empty-state"><h2>No open projects yet</h2><p>New verified client briefs will appear here.</p><button className="outline-button" onClick={() => setView("home")}>Back to dashboard</button></div>}
+  </main></>;
 }
 
 function Profile() {
@@ -599,9 +653,10 @@ type PostedJob = {
   title: string;
   description: string;
   category: string;
-  budget: string;
+  budget: string | number;
   deadline: string;
   applicants: string[];
+  applicantCount?: number;
   creditReserved: boolean;
 };
 
@@ -675,7 +730,7 @@ function ClientTopbar({ setActive, startJob, credits }: { setActive: (value: str
   </header>;
 }
 
-function JobPostFlow({ close, posted, creditsRemaining }: { close: () => void; posted: (job: Omit<PostedJob, "id" | "applicants" | "creditReserved">) => void; creditsRemaining: number }) {
+function JobPostFlow({ close, posted, creditsRemaining }: { close: () => void; posted: (job: Omit<PostedJob, "id" | "applicants">) => Promise<void>; creditsRemaining: number }) {
   const [step, setStep] = useState(1);
   const [category, setCategory] = useState("");
   const [jobType, setJobType] = useState("Freelance project");
@@ -686,12 +741,19 @@ function JobPostFlow({ close, posted, creditsRemaining }: { close: () => void; p
   const [deadline, setDeadline] = useState("");
   const [useCredit, setUseCredit] = useState(false);
   const [error, setError] = useState("");
-  const next = () => {
+  const [saving, setSaving] = useState(false);
+  const next = async () => {
     setError("");
     if (step === 1 && (!category || !jobType || !experience)) return setError("Choose a job category, job type, and required experience level.");
     if (step === 2 && (!title.trim() || !description.trim())) return setError("Fill in the job title and description before continuing.");
     if (step === 3 && (!budget.trim() || !deadline)) return setError("Fill in the project budget and submission deadline.");
-    if (step === 4) return posted({ title, description, category, budget: `₹${Number(budget).toLocaleString("en-IN")}`, deadline, creditReserved: useCredit });
+    if (step === 4) {
+      setSaving(true);
+      try { await posted({ title, description, category, budget: Number(budget), deadline, creditReserved: useCredit }); }
+      catch (issue) { setError(issue instanceof Error ? issue.message : "Your job could not be posted. Please try again."); }
+      finally { setSaving(false); }
+      return;
+    }
     setStep(step + 1);
   };
   return (
@@ -733,7 +795,7 @@ function JobPostFlow({ close, posted, creditsRemaining }: { close: () => void; p
           </section>
         </>}
         {error && <p className="form-error" role="alert">{error}</p>}
-        <footer className="job-flow-actions"><button className="back-link" onClick={() => step === 1 ? close() : setStep(step - 1)}>← Back</button><button className="primary-button" onClick={next}>{step === 4 ? "Post a Job" : "Continue →"}</button></footer>
+        <footer className="job-flow-actions"><button className="back-link" disabled={saving} onClick={() => step === 1 ? close() : setStep(step - 1)}>← Back</button><button className="primary-button" disabled={saving} onClick={() => void next()}>{saving ? "Publishing…" : step === 4 ? "Post a Job" : "Continue →"}</button></footer>
       </main>
     </div>
   );
@@ -802,9 +864,46 @@ function PostedJobsPage({ jobs, create, openHire }: { jobs: PostedJob[]; create:
   </>;
 }
 
+function LivePostedJobsPage({ jobs, create, openHire }: { jobs: PostedJob[]; create: () => void; openHire: (designer: (typeof recommendedDesigners)[number], job: PostedJob, projectId?: string) => void }) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const [proposals, setProposals] = useState<Record<string, any[]>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [error, setError] = useState("");
+  const expand = async (jobId: string) => {
+    setExpanded(jobId); setError(""); if (proposals[jobId]) return;
+    setBusy(jobId);
+    try { const data = await platformRequest<{ proposals: any[] }>(`jobs/${jobId}/proposals`); setProposals((current) => ({ ...current, [jobId]: data.proposals })); }
+    catch (issue) { setError(issue instanceof Error ? issue.message : "Could not load proposals."); }
+    finally { setBusy(null); }
+  };
+  const decide = async (job: PostedJob, proposal: any, action: "discuss" | "reject") => {
+    setError("");
+    try {
+      const decision = await platformRequest<{ project?: { id: string } }>(`proposals/${encodeURIComponent(proposal.id)}/decision`, "POST", { action });
+      if (action === "reject") setProposals((current) => ({ ...current, [job.id]: (current[job.id] ?? []).map((item) => item.id === proposal.id ? { ...item, status: "rejected" } : item) }));
+      else {
+        const designer = { ...recommendedDesigners[0], name: proposal.freelancerName || "FindRight designer", ai: proposal.aiDisclosure, aiLevel: proposal.aiDisclosure, title: "Freelancer applicant" };
+        openHire(designer, job, decision.project?.id);
+      }
+    } catch (issue) { setError(issue instanceof Error ? issue.message : "Could not update this proposal."); }
+  };
+  return <><ClientPageHeader eyebrow="Hiring activity" title="Posted jobs & responses" description="Review every proposal and choose who you want to discuss the project with." action={<button className="primary-button" onClick={create}>Post a job +</button>} />
+    {jobs.length === 0 ? <div className="client-empty"><h2>No jobs posted yet</h2><p>Post a brief to start receiving designer proposals.</p><button className="primary-button" onClick={create}>Create your first job</button></div> : <div className="posted-job-list">{jobs.map((job) => {
+      const isExpanded = expanded === job.id; const replies = proposals[job.id] ?? [];
+      return <article className="posted-job-card" key={job.id}><button className="posted-job-summary" onClick={() => isExpanded ? setExpanded(null) : void expand(job.id)} aria-expanded={isExpanded}>
+        <span className="posted-job-category">{job.category}</span><h2>{job.title}</h2><p>{job.description}</p><span className="posted-job-meta"><b>{typeof job.budget === "number" ? `INR ${job.budget.toLocaleString("en-IN")}` : job.budget}</b><span>Deadline {job.deadline}</span><span>{job.applicantCount ?? replies.length} responses</span>{job.creditReserved && <i>Starter credit reserved</i>}</span></button>
+        {isExpanded && <div className="applicant-list">{error && <p className="form-error" role="alert">{error}</p>}{busy === job.id ? <p>Loading proposals...</p> : replies.length ? replies.map((proposal) => {
+          const designer = recommendedDesigners.find((item) => item.name === proposal.freelancerName) ?? recommendedDesigners[0];
+          return <section className="applicant-card" key={proposal.id}><div className="designer-identity"><img src={`${A}/${designer.avatar}`} alt="" /><span><b>{proposal.freelancerName || "FindRight designer"}</b><small>{proposal.timeline} · {proposal.status}</small></span></div><span className="designer-ai">AI disclosure: {proposal.aiDisclosure}</span><p>{proposal.proposal}</p><div className="applicant-response-meta"><span><b>Proposal</b>INR {Number(proposal.amount).toLocaleString("en-IN")}</span><span><b>Received</b>{new Date(proposal.createdAt).toLocaleDateString("en-IN")}</span></div>
+            {proposal.status === "pending" && <div className="hire-flow-actions"><button className="outline-button" onClick={() => void decide(job, proposal, "reject")}>Decline</button><button className="primary-button" onClick={() => void decide(job, proposal, "discuss")}>Chat & discuss</button></div>}{proposal.status === "discussion" && <button className="primary-button" onClick={() => void decide(job, proposal, "discuss")}>Continue discussion</button>}</section>;
+        }) : <div className="applicant-empty"><b>No responses yet</b><p>New freelancer proposals will appear here.</p></div>}</div>}</article>;
+    })}</div>}
+  </>;
+}
+
 type HireStep = "chat" | "call" | "agreement" | "confirmation" | "payment";
 
-function HireFlow({ designer, jobs, initialJob, close, hired }: { designer: (typeof recommendedDesigners)[number]; jobs: PostedJob[]; initialJob: PostedJob; close: () => void; hired: (job: PostedJob, designer: (typeof recommendedDesigners)[number]) => void }) {
+function HireFlow({ designer, jobs, initialJob, projectId, close, hired }: { designer: (typeof recommendedDesigners)[number]; jobs: PostedJob[]; initialJob: PostedJob; projectId?: string; close: () => void; hired: (job: PostedJob, designer: (typeof recommendedDesigners)[number]) => void }) {
   const [step, setStep] = useState<HireStep>("chat");
   const [jobId, setJobId] = useState(initialJob.id);
   const job = jobs.find((item) => item.id === jobId) ?? initialJob;
@@ -823,19 +922,42 @@ function HireFlow({ designer, jobs, initialJob, close, hired }: { designer: (typ
   const [agreed, setAgreed] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("UPI");
   const [checkoutNotice, setCheckoutNotice] = useState(false);
+  const [flowError, setFlowError] = useState("");
+  const [waitingForFreelancer, setWaitingForFreelancer] = useState(false);
   const proposalAmount = Number(applicantProposals[designer.name]?.amount.replace(/[^0-9]/g, "") ?? price);
   const basePrice = Number(price) || proposalAmount;
   const discount = job.creditReserved ? Math.min(Math.round(basePrice * 0.15), 5000) : 0;
   const total = basePrice - discount;
-  const sendMessage = () => { if (draft.trim()) { setMessages([...messages, draft.trim()]); setDraft(""); } };
+  useEffect(() => {
+    if (!projectId) return;
+    void platformRequest<{ messages: { text: string }[] }>(`projects/${projectId}/messages`).then(({ messages: saved }) => {
+      if (saved.length) setMessages(saved.map((message) => message.text));
+    }).catch((issue) => setFlowError(issue instanceof Error ? issue.message : "Could not load project chat."));
+  }, [projectId]);
+  const sendMessage = async () => {
+    const text = draft.trim(); if (!text) return;
+    setFlowError("");
+    try { if (projectId) await platformRequest(`projects/${projectId}/messages`, "POST", { text }); setMessages((current) => [...current, text]); setDraft(""); }
+    catch (issue) { setFlowError(issue instanceof Error ? issue.message : "Message could not be saved."); }
+  };
   const steps: { id: HireStep; label: string }[] = [{ id: "chat", label: "Chat" }, { id: "call", label: "Video call" }, { id: "agreement", label: "Project details" }, { id: "confirmation", label: "Confirm" }, { id: "payment", label: "Payment" }];
-  const go = (next: HireStep) => { setCheckoutNotice(false); setStep(next); };
+  const go = (next: HireStep) => {
+    setCheckoutNotice(false);
+    if (next === "payment" && projectId) {
+      void platformRequest<{ paymentReady: boolean }>(`projects/${projectId}/confirm-agreement`, "POST", {}).then(({ paymentReady }) => {
+        if (paymentReady) setStep("payment");
+        else { setWaitingForFreelancer(true); setFlowError("Your confirmation is saved. Payment will unlock after the freelancer confirms the same terms."); }
+      }).catch((issue) => setFlowError(issue instanceof Error ? issue.message : "Project confirmation could not be saved."));
+      return;
+    }
+    setStep(next);
+  };
   return <div className="hire-flow-overlay" role="dialog" aria-modal="true" aria-label={`Discuss hiring ${designer.name}`}>
     <button className="hire-flow-backdrop" onClick={close} aria-label="Close hiring flow" />
     <section className="hire-flow-panel">
       <header className="hire-flow-header"><div><span className="eyebrow">Hire a designer</span><h2>{designer.name}</h2><p>{designer.title} · {designer.ai}</p></div><button onClick={close} aria-label="Close">×</button></header>
       <nav className="hire-stepper" aria-label="Hiring steps">{steps.map((item, index) => <span className={item.id === step ? "active" : steps.findIndex((x) => x.id === step) > index ? "done" : ""} key={item.id}><i>{index + 1}</i>{item.label}</span>)}</nav>
-      {step === "chat" && <div className="hire-step-content"><div className="hire-step-title"><h3>Start with a conversation</h3><p>Talk through the brief and ask questions before scheduling a call or discussing payment.</p></div>
+      {flowError && <p className="form-error" role="alert">{flowError}</p>}{step === "chat" && <div className="hire-step-content"><div className="hire-step-title"><h3>Start with a conversation</h3><p>Talk through the brief and ask questions before scheduling a call or discussing payment.</p></div>
         {jobs.length > 0 && <label className="job-select-label">Job you’re discussing<select value={jobId} onChange={(event) => { const nextJob = jobs.find((item) => item.id === event.target.value); if (nextJob) { setJobId(nextJob.id); setScope(nextJob.description); setTimeline(nextJob.deadline); } }}><option value={job.id}>{job.title}</option>{jobs.filter((item) => item.id !== job.id).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}</select></label>}
         <div className="hire-chat-thread">{messages.map((message, index) => <p key={`${message}-${index}`} className={index % 2 === 1 ? "mine" : ""}><small>{index % 2 === 1 ? "You" : designer.name}</small>{message}</p>)}</div>
         <div className="hire-chat-compose"><input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => event.key === "Enter" && sendMessage()} placeholder={`Message ${designer.name.split(" ")[0]}`} /><button onClick={sendMessage}>Send</button></div>
@@ -850,7 +972,7 @@ function HireFlow({ designer, jobs, initialJob, close, hired }: { designer: (typ
         <label className="hire-field">Scope of work<textarea value={scope} onChange={(event) => setScope(event.target.value)} /></label><label className="hire-field">Deliverables<textarea value={deliverables} onChange={(event) => setDeliverables(event.target.value)} /></label><div className="hire-fields-row"><label className="hire-field">Target date<input value={timeline} onChange={(event) => setTimeline(event.target.value)} placeholder="e.g. 20 Nov 2026" /></label><label className="hire-field">Agreed project price (₹)<input type="number" min="1" value={price} onChange={(event) => setPrice(event.target.value)} /></label></div>
         {job.creditReserved && <div className="credit-applied-note">Starter credit reserved: −₹{discount.toLocaleString("en-IN")} at checkout. Total after credit: ₹{total.toLocaleString("en-IN")}.</div>}
         <label className="mutual-agreement"><input type="checkbox" checked={agreed} onChange={(event) => setAgreed(event.target.checked)} /><span>Both sides agree to the scope, deliverables, timeline, and price above.</span></label>
-        <div className="hire-flow-actions"><button className="outline-button" onClick={() => go("call")}>Back to video call</button><button className="primary-button" disabled={!scope.trim() || !deliverables.trim() || !timeline.trim() || basePrice <= 0 || !agreed} onClick={() => go("confirmation")}>Review agreement</button></div>
+        <div className="hire-flow-actions"><button className="outline-button" onClick={() => go("call")}>Back to video call</button><button className="primary-button" disabled={!scope.trim() || !deliverables.trim() || !timeline.trim() || basePrice <= 0 || !agreed} onClick={() => { void (async () => { try { if (projectId) await platformRequest(`projects/${projectId}/agreement`, "PUT", { scope, deliverables, deadline: timeline, price: basePrice }); go("confirmation"); } catch (issue) { setFlowError(issue instanceof Error ? issue.message : "Agreement could not be saved."); } })(); }}>Review agreement</button></div>
       </div>}
       {step === "confirmation" && <div className="hire-step-content"><div className="hire-step-title"><h3>Confirm the project</h3><p>Both sides have reviewed the agreed details. Payment starts only after you confirm this summary.</p></div><section className="hire-confirmation-summary"><span>{job.title}</span><h4>{designer.name}</h4><p><b>Scope</b>{scope}</p><p><b>Deliverables</b>{deliverables}</p><div><span>Timeline</span><b>{timeline}</b></div><div><span>Agreed price</span><b>₹{basePrice.toLocaleString("en-IN")}</b></div>{discount > 0 && <div><span>Starter credit</span><b>−₹{discount.toLocaleString("en-IN")}</b></div>}<div className="hire-summary-total"><span>Total after credit</span><b>₹{total.toLocaleString("en-IN")}</b></div></section><div className="hire-flow-actions"><button className="outline-button" onClick={() => go("agreement")}>Edit details</button><button className="primary-button" onClick={() => { hired(job, designer); go("payment"); }}>Confirm hire & continue to payment</button></div></div>}
       {step === "payment" && <div className="hire-step-content"><div className="hire-step-title"><h3>Secure project payment</h3><p>Your hiring details are confirmed. The advance is due now; the remaining balance is released after final delivery approval.</p></div><section className="payment-summary"><div><span>Agreed project total</span><b>₹{total.toLocaleString("en-IN")}</b></div><div><span>10% advance to start</span><b>₹{Math.ceil(total * 0.1).toLocaleString("en-IN")}</b></div><div><span>Remaining 90% after approved delivery</span><b>₹{Math.floor(total * 0.9).toLocaleString("en-IN")}</b></div></section><fieldset className="payment-methods"><legend>Choose a payment method</legend>{["UPI", "Card", "Net banking"].map((method) => <label key={method}><input type="radio" name="payment-method" checked={paymentMethod === method} onChange={() => setPaymentMethod(method)} />{method}</label>)}</fieldset><div className="payment-gateway-note"><b>Protected checkout</b><span>Payment provider setup is required before a real charge can be taken. No payment has been made.</span></div>{checkoutNotice && <p className="form-error" role="status">Secure checkout is not connected yet. Your confirmed project is saved and no charge was made.</p>}<div className="hire-flow-actions"><button className="outline-button" onClick={() => go("confirmation")}>Review agreement</button><button className="primary-button" onClick={() => setCheckoutNotice(true)}>Continue to secure payment</button></div></div>}
@@ -931,30 +1053,33 @@ function ClientDashboard({ logout, userId }: { logout: () => void; userId: strin
   const [homeTab, setHomeTab] = useState("activity");
   const [posting, setPosting] = useState(false);
   const [projects, setProjects] = useState(clientProjects);
-  const [jobs, setJobs] = useState<PostedJob[]>(samplePostedJobs);
+  const [jobs, setJobs] = useState<PostedJob[]>([]);
   const [creditsRemaining, setCreditsRemaining] = useState(3);
-  const [loadedUser, setLoadedUser] = useState("");
   const [notice, setNotice] = useState("");
   const [savedDesigners, setSavedDesigners] = useState<string[]>([]);
   const [selectedDesigner, setSelectedDesigner] = useState<string | null>(null);
-  const [hire, setHire] = useState<{ designer: (typeof recommendedDesigners)[number]; job: PostedJob } | null>(null);
+  const [hire, setHire] = useState<{ designer: (typeof recommendedDesigners)[number]; job: PostedJob; projectId?: string } | null>(null);
   useEffect(() => {
     if (!userId) return;
-    try {
-      const storedJobs = localStorage.getItem(`findright:${userId}:posted-jobs`);
-      const parsedJobs = storedJobs ? JSON.parse(storedJobs) as unknown : null;
-      setJobs(Array.isArray(parsedJobs) ? parsedJobs as PostedJob[] : samplePostedJobs);
-      const storedCredits = localStorage.getItem(`findright:${userId}:starter-credits`);
-      setCreditsRemaining(storedCredits === null ? 3 : Math.max(0, Number(storedCredits) || 0));
-    } catch { setJobs(samplePostedJobs); setCreditsRemaining(3); }
-    setLoadedUser(userId);
+    let cancelled = false;
+    void platformRequest<{ jobs: PostedJob[] }>("jobs?mine=1").then(({ jobs: savedJobs }) => {
+      if (cancelled) return;
+      setJobs(savedJobs.map((job) => ({ ...job, applicants: [], applicantCount: job.applicantCount ?? 0 })));
+      setCreditsRemaining(Math.max(0, 3 - savedJobs.filter((job) => job.creditReserved).length));
+    }).catch((issue) => { if (!cancelled) setNotice(issue instanceof Error ? issue.message : "Your posted jobs could not be loaded."); });
+    return () => { cancelled = true; };
   }, [userId]);
-  useEffect(() => { if (userId && loadedUser === userId) localStorage.setItem(`findright:${userId}:posted-jobs`, JSON.stringify(jobs)); }, [jobs, loadedUser, userId]);
-  useEffect(() => { if (userId && loadedUser === userId) localStorage.setItem(`findright:${userId}:starter-credits`, String(creditsRemaining)); }, [creditsRemaining, loadedUser, userId]);
   const toggleSaved = (name: string) => setSavedDesigners(savedDesigners.includes(name) ? savedDesigners.filter((item) => item !== name) : [...savedDesigners, name]);
   const openProfile = (name: string) => { setSelectedDesigner(name); setActive("find"); };
-  const openHire = (designer: (typeof recommendedDesigners)[number], job: PostedJob = jobs[0]) => { setSelectedDesigner(null); setHire({ designer, job }); };
-  if (posting) return <JobPostFlow close={() => setPosting(false)} creditsRemaining={creditsRemaining} posted={(job) => { const nextJob: PostedJob = { ...job, id: `job-${Date.now()}`, applicants: [] }; setJobs([nextJob, ...jobs]); if (job.creditReserved) setCreditsRemaining(Math.max(0, creditsRemaining - 1)); setPosting(false); setActive("jobs"); setNotice(job.creditReserved ? "Job posted. A starter credit is reserved for your first hire." : "Job posted. Responses will appear in Posted jobs."); }} />;
+  const openHire = (designer: (typeof recommendedDesigners)[number], job: PostedJob = jobs[0], projectId?: string) => { setSelectedDesigner(null); setHire({ designer, job, projectId }); };
+  if (posting) return <JobPostFlow close={() => setPosting(false)} creditsRemaining={creditsRemaining} posted={async (job) => {
+    const { job: savedJob } = await platformRequest<{ job: PostedJob }>("jobs", "POST", job);
+    const nextJob: PostedJob = { ...savedJob, applicants: [], applicantCount: 0 };
+    setJobs((current) => [nextJob, ...current]);
+    if (job.creditReserved) setCreditsRemaining((current) => Math.max(0, current - 1));
+    setPosting(false); setActive("jobs");
+    setNotice(job.creditReserved ? "Job posted. One starter credit is reserved for this hire." : "Job posted. Freelancer proposals will appear in Posted Jobs.");
+  }} />;
   return (
     <div className="client-shell">
       <ClientTopbar setActive={setActive} startJob={() => setPosting(true)} credits={creditsRemaining} />
@@ -974,7 +1099,7 @@ function ClientDashboard({ logout, userId }: { logout: () => void; userId: strin
           </section>
         </div></>}
         {active === "find" && <>{selectedDesigner && <div className="selected-designer-banner">Viewing {selectedDesigner}'s verified profile <button onClick={() => setSelectedDesigner(null)}>Close</button></div>}<DesignerDirectory saved={savedDesigners} toggleSaved={toggleSaved} openProfile={openProfile} /></>}
-        {active === "jobs" && <PostedJobsPage jobs={jobs} create={() => setPosting(true)} openHire={openHire} />}
+        {active === "jobs" && <LivePostedJobsPage jobs={jobs} create={() => setPosting(true)} openHire={openHire} />}
         {active === "projects" && <ClientProjectsPage projects={projects} create={() => setPosting(true)} />}
         {active === "chat" && <ClientChatPage />}
         {active === "profile" && <ClientProfilePage />}
@@ -984,7 +1109,7 @@ function ClientDashboard({ logout, userId }: { logout: () => void; userId: strin
         const designer = recommendedDesigners.find((item) => item.name === selectedDesigner)!;
         return <div className="designer-profile-overlay" role="dialog" aria-modal="true" aria-label={`${designer.name} profile`}><button className="overlay-backdrop" onClick={() => setSelectedDesigner(null)} aria-label="Close profile" /><section className="designer-profile-panel"><button className="profile-close" onClick={() => setSelectedDesigner(null)}>Close</button><div className="designer-profile-head"><img src={`${A}/${designer.avatar}`} alt="" /><div><span className="pill success">Identity verified</span><h2>{designer.name}</h2><p>{designer.title} • Ahmedabad, India</p><b>★ {designer.rating} • 32 completed projects</b></div></div><p className="designer-profile-bio">Multi-disciplinary designer focused on thoughtful brand systems, accessible digital experiences, and production-ready project delivery with clear human–AI disclosure.</p><div className="tag-row">{["Brand Identity", "UI/UX Design", "Typography", "Design Systems"].map((item) => <span key={item}>{item}</span>)}</div><h3>Selected portfolio work</h3><div className="profile-work-grid">{designer.works.map((work) => <img src={`${A}/${work}`} alt="" key={work} />)}</div><div className="profile-disclosure"><b>AI usage disclosure</b><span>{designer.ai}</span></div><footer><button className="outline-button" onClick={() => toggleSaved(designer.name)}>{savedDesigners.includes(designer.name) ? "Saved to shortlist" : "Save profile"}</button><button className="primary-button" onClick={() => openHire(designer)}>Start hiring discussion</button></footer></section></div>;
       })()}
-      {hire && <HireFlow designer={hire.designer} jobs={jobs} initialJob={hire.job} close={() => setHire(null)} hired={(job, designer) => { setProjects([{ title: job.title, description: job.description, budget: job.budget, progress: 0, ai: designer.ai }, ...projects]); setNotice(`Hiring confirmed with ${designer.name}. Advance payment is available after project agreement.`); }} />}
+      {hire && <HireFlow designer={hire.designer} jobs={jobs} initialJob={hire.job} projectId={hire.projectId} close={() => setHire(null)} hired={(job, designer) => { setProjects([{ title: job.title, description: job.description, budget: job.budget, progress: 0, ai: designer.ai }, ...projects]); setNotice(`Project details saved for discussion with ${designer.name}.`); }} />}
     </div>
   );
 }
@@ -1067,7 +1192,7 @@ export default function App() {
       <Sidebar view={view} setView={setView} />
       <div className="content-shell">
         {view === "home" && <Dashboard setView={setView} />}
-        {view === "projects" && <Projects setView={setView} />}
+        {view === "projects" && <LiveProjects setView={setView} />}
         {view === "workspace" && <Workspace />}
         {view === "progression" && <Progression />}
         {view === "profile" && <Profile />}
