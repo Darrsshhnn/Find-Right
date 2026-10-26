@@ -15,10 +15,12 @@ import { allFreelancers, freelancerById, matchScore } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Job" };
 
-export default async function ClientJob({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ posted?: string; sort?: string }> }) {
+export default async function ClientJob({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ posted?: string; sort?: string; view?: string }> }) {
   const user = await requireUser("client");
   const { id } = await params;
-  const { posted, sort = "match" } = await searchParams;
+  const { posted, sort = "match", view: viewParam } = await searchParams;
+  const view = viewParam === "list" ? "list" : "grid";
+  const qs = (next: { sort?: string; view?: string }) => `/client/jobs/${id}?sort=${next.sort ?? sort}&view=${next.view ?? view}`;
   const data = db();
   const job = data.jobs.find((j) => j.id === id && j.clientId === user.id);
   if (!job) notFound();
@@ -53,17 +55,23 @@ export default async function ClientJob({ params, searchParams }: { params: Prom
           <section className="stack">
             <div className="row-between">
               <h2>Proposals ({proposals.length})</h2>
+              <div className="row" style={{ gap: 12 }}>
               <div className="segmented">
-                {[["match", "Best match"], ["rating", "Top rated"], ["price", "Lowest price"]].map(([k, l]) => <Link key={k} href={`/client/jobs/${id}?sort=${k}`} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 500, background: sort === k ? "#fff" : undefined, color: sort === k ? "var(--primary-deep)" : "var(--muted-2)" }}>{l}</Link>)}
+                {[["match", "Best match"], ["rating", "Top rated"], ["price", "Lowest price"]].map(([k, l]) => <Link key={k} href={qs({ sort: k })} style={{ padding: "6px 12px", borderRadius: 8, fontSize: 12.5, fontWeight: 500, background: sort === k ? "#fff" : undefined, color: sort === k ? "var(--primary-deep)" : "var(--muted-2)" }}>{l}</Link>)}
+              </div>
+              <div className="view-toggle" role="group" aria-label="Proposal layout">
+                <Link href={qs({ view: "grid" })} className={view === "grid" ? "active" : ""} aria-label="Grid view" aria-current={view === "grid" ? "true" : undefined} title="Grid view"><Icon name="grid" size={18} /></Link>
+                <Link href={qs({ view: "list" })} className={view === "list" ? "active" : ""} aria-label="List view" aria-current={view === "list" ? "true" : undefined} title="List view"><Icon name="list" size={18} /></Link>
+              </div>
               </div>
             </div>
             {proposals.length === 0 && <p className="card-flat muted">No proposals yet. Invite matched freelancers from the panel — invited freelancers respond 3× faster.</p>}
-            <div className="grid-2">
+            <div className={view === "list" ? "proposal-list" : "grid-2"}>
             {proposals.map(({ p, f, match }) => {
               const contract = contracts.find((c) => c.proposalId === p.id && c.status !== "declined" && c.status !== "cancelled");
               const profile = `/client/freelancers/${f.user.id}`;
               return (
-                <article key={p.id} className="card proposal-card">
+                <article key={p.id} className={`card proposal-card${view === "list" ? " proposal-row" : ""}`}>
                   <Link href={profile} className="card-cover-link" aria-label={`Open ${f.user.name}'s full profile`} />
                   <div className="row-between" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
                     <div className="fl-id">

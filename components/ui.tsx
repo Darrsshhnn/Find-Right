@@ -105,11 +105,12 @@ export function PageHead({ eyebrow, title, description, actions }: { eyebrow?: s
   );
 }
 
-export function Tabs({ items, active }: { items: { href: string; label: string; key: string; count?: number }[]; active: string }) {
+export function Tabs({ items, active }: { items: { href: string; label: string; key: string; count?: number; icon?: string }[]; active: string }) {
   return (
     <nav className="tabs" aria-label="Sections">
       {items.map((item) => (
         <Link key={item.key} href={item.href} className={item.key === active ? "active" : ""} aria-current={item.key === active ? "page" : undefined}>
+          {item.icon && <Icon name={item.icon} size={16} />}
           {item.label}
           {item.count !== undefined && <span className="tab-count">{item.count}</span>}
         </Link>
@@ -119,8 +120,22 @@ export function Tabs({ items, active }: { items: { href: string; label: string; 
 }
 
 /** Soft drifting brand-purple gradients. Pure CSS (transform only), paused under prefers-reduced-motion. */
-export function AnimatedBackground() {
-  return <div className="bg-animated" aria-hidden="true"><span /><span /><span /></div>;
+const FLOATERS = ["ring", "dot", "square", "plus", "ring", "dot", "square", "ring", "plus", "dot", "ring", "square"];
+
+/** Soft purple glow behind public pages; `lively` adds slowly drifting shapes (landing page). */
+/** Settings-style card heading with an icon chip. */
+export function SectionTitle({ icon, id, children }: { icon: string; id?: string; children: React.ReactNode }) {
+  return <h2 className="section-h" id={id}><span className="section-ico" aria-hidden="true"><Icon name={icon} size={18} /></span>{children}</h2>;
+}
+
+export function AnimatedBackground({ lively = false }: { lively?: boolean }) {
+  return (
+    <div className={`bg-animated${lively ? " bg-lively" : ""}`} aria-hidden="true">
+      <span /><span /><span />
+      {lively && <div className="bg-grid" />}
+      {lively && FLOATERS.map((shape, i) => <b key={i} className={`floater floater-${shape}`} />)}
+    </div>
+  );
 }
 
 export function Notice({ text, tone = "ok" }: { text?: string; tone?: "ok" | "info" | "warn" | "error" }) {

@@ -1,11 +1,10 @@
 import Icon from "./Icon";
 
-/**
- * Single source for the FindRight logo mark (header, sidebar, intro animation).
- * To use the official logo: save it as public/brand/logo.svg (or .png) and set BRAND_LOGO to its path.
- */
-export const BRAND_LOGO = "";
+/** The FindRight mark (ring + check). `/brand/logo-full.svg` holds the full lockup with the wordmark. */
+export const BRAND_LOGO = "/brand/logo-mark.svg";
 
 export default function BrandMark({ size = 18 }: { size?: number }) {
-  return BRAND_LOGO ? <img src={BRAND_LOGO} alt="" width={size} height={size} /> : <Icon name="check" size={size} />;
+  return BRAND_LOGO
+    ? <img src={BRAND_LOGO} alt="" height={size} width={Math.round((size * 456) / 320)} style={{ objectFit: "contain" }} />
+    : <Icon name="check" size={size} />;
 }

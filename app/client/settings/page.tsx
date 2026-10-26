@@ -4,7 +4,7 @@ import AccountSecurity from "@/components/AccountSecurity";
 import EmailChange from "@/components/EmailChange";
 import Icon from "@/components/Icon";
 import { ActionForm, Submit } from "@/components/ActionForm";
-import { Avatar, PageHead } from "@/components/ui";
+import { Avatar, PageHead, SectionTitle } from "@/components/ui";
 import { updateClientSettings } from "@/app/actions/client";
 import { updateAccount } from "@/app/actions/shared";
 import { requireUser } from "@/lib/auth";
@@ -28,15 +28,15 @@ export default async function ClientSettings() {
       <PageHead title="Settings" description="Account, notifications, payments and security." />
       <div className="layout-settings">
         <nav className="card-flat settings-nav" aria-label="Settings sections">
-          <a href="#account">Account</a>
-          <a href="#notifications">Notifications</a>
-          <a href="#payments">Payments</a>
-          <a href="#security">Security</a>
-          <Link href="/client/support">Help</Link>
+          <a href="#account"><Icon name="user" size={16} /> Account</a>
+          <a href="#notifications"><Icon name="bell" size={16} /> Notifications</a>
+          <a href="#payments"><Icon name="card" size={16} /> Payments</a>
+          <a href="#security"><Icon name="lock" size={16} /> Security</a>
+          <Link href="/client/support"><Icon name="help" size={16} /> Help</Link>
         </nav>
         <div className="stack-lg">
           <section className="card stack" id="account" aria-labelledby="account-title">
-            <h2 id="account-title">Account details</h2>
+            <SectionTitle icon="user" id="account-title">Account details</SectionTitle>
             <ActionForm action={updateAccount} className="stack">
               <div className="row" style={{ gap: 16 }}>
                 <Avatar name={user.name} src={user.avatar} size="lg" />
@@ -51,13 +51,13 @@ export default async function ClientSettings() {
             </ActionForm>
             <hr className="divider" />
             <div className="stack-sm">
-              <h3>Email address</h3>
+              <h3 className="row" style={{ gap: 8 }}><Icon name="mail" size={16} /> Email address</h3>
               <EmailChange currentEmail={user.email} pendingEmail={user.pendingEmail?.email} />
             </div>
           </section>
 
           <ActionForm action={updateClientSettings} className="card stack">
-            <h2 id="notifications">Notifications</h2>
+            <SectionTitle icon="bell" id="notifications">Notifications</SectionTitle>
             <div>
               {rows.map(([key, title, detail]) => (
                 <label className="setting-row" key={key}>
@@ -70,7 +70,7 @@ export default async function ClientSettings() {
           </ActionForm>
 
           <section className="card stack" id="payments" aria-labelledby="payments-title">
-            <div className="row-between"><h2 id="payments-title">Payment methods</h2><span className="badge badge-amber">Demo</span></div>
+            <div className="row-between"><SectionTitle icon="card" id="payments-title">Payment methods</SectionTitle><span className="badge badge-amber">Demo</span></div>
             <div className="file-row"><Icon name="wallet" /><span className="grow">{lastMethod ?? "UPI"} · {user.email.split("@")[0]}@upi</span><span className="badge badge-green">Default</span></div>
             <p className="small muted">Saved methods are simulated in this build. Connect a payment gateway to store real cards and UPI IDs.</p>
             <Link href="/client/payments" className="link small">View payments & receipts →</Link>

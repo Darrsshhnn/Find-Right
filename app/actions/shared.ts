@@ -106,6 +106,13 @@ export async function raiseDispute(_: ActionState, form: FormData): Promise<Acti
   return refresh("Case submitted. The FindRight trust team will reply within 24 hours.");
 }
 
+/** Remember that the first-login tour was shown. No revalidation: the open tour must not re-render away. */
+export async function markTourSeen() {
+  const user = await requireUser();
+  if (user.tourSeen) return;
+  mutate((d) => { const u = d.users.find((x) => x.id === user.id); if (u) u.tourSeen = true; });
+}
+
 export async function markNotificationsRead() {
   const user = await requireUser();
   mutate((d) => { d.notifications.forEach((n) => { if (n.userId === user.id) n.read = true; }); });

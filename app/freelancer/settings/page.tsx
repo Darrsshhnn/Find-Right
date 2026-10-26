@@ -4,7 +4,7 @@ import EmailChange from "@/components/EmailChange";
 import Icon from "@/components/Icon";
 import { ActionForm, Submit } from "@/components/ActionForm";
 import { ReviewCard } from "@/components/cards";
-import { AiMeter, AvailabilityBadge, PageHead, Tabs } from "@/components/ui";
+import { AiMeter, AvailabilityBadge, PageHead, SectionTitle, Tabs } from "@/components/ui";
 import { setAvailability, updateAiDisclosure, updateFreelancerSettings } from "@/app/actions/freelancer";
 import { requireUser } from "@/lib/auth";
 import { AI_LEVELS, AVAILABILITY, DISCIPLINES } from "@/lib/constants";
@@ -27,10 +27,10 @@ export default async function FreelancerSettings({ searchParams }: { searchParam
     <>
       <PageHead eyebrow="Freelancer account" title="Account & settings" />
       <Tabs active={tab} items={[
-        { key: "ai", label: "AI usage disclosure", href: "/freelancer/settings?tab=ai" },
-        { key: "availability", label: "Availability", href: "/freelancer/settings?tab=availability" },
-        { key: "reputation", label: "Reputation (two-way)", href: "/freelancer/settings?tab=reputation" },
-        { key: "account", label: "Account & privacy", href: "/freelancer/settings?tab=account" },
+        { key: "ai", label: "AI usage disclosure", icon: "bot", href: "/freelancer/settings?tab=ai" },
+        { key: "availability", label: "Availability", icon: "calendar", href: "/freelancer/settings?tab=availability" },
+        { key: "reputation", label: "Reputation (two-way)", icon: "star", href: "/freelancer/settings?tab=reputation" },
+        { key: "account", label: "Account & privacy", icon: "user", href: "/freelancer/settings?tab=account" },
       ]} />
 
       {tab === "ai" && (
@@ -55,7 +55,7 @@ export default async function FreelancerSettings({ searchParams }: { searchParam
 
       {tab === "availability" && (
         <ActionForm action={setAvailability} className="card stack" style={{ maxWidth: 760 }}>
-          <div className="row-between"><h2>Current availability</h2><AvailabilityBadge value={p.availability} /></div>
+          <div className="row-between"><SectionTitle icon="calendar">Current availability</SectionTitle><AvailabilityBadge value={p.availability} /></div>
           <p className="muted small">Clients with urgent projects filter for freelancers who are available now. Keep this accurate to get the right invitations.</p>
           <div className="options">
             {(Object.keys(AVAILABILITY) as Availability[]).map((k) => (
@@ -68,15 +68,15 @@ export default async function FreelancerSettings({ searchParams }: { searchParam
 
       {tab === "reputation" && (
         <div className="grid-2">
-          <section className="stack"><div className="row-between"><h2>Ratings received ({received.length})</h2><span className="small muted">From clients</span></div>{received.length ? received.map((r) => <ReviewCard key={r.id} review={r} author={data.users.find((u) => u.id === r.fromId)} project={data.projects.find((x) => x.id === r.projectId)?.title} />) : <p className="muted small">No ratings yet.</p>}</section>
-          <section className="stack"><div className="row-between"><h2>Ratings given ({given.length})</h2><span className="small muted">To clients</span></div>{given.length ? given.map((r) => <ReviewCard key={r.id} review={r} author={user} project={data.projects.find((x) => x.id === r.projectId)?.title} />) : <p className="muted small">You rate clients after each completed contract.</p>}</section>
+          <section className="stack"><div className="row-between"><SectionTitle icon="star">Ratings received ({received.length})</SectionTitle><span className="small muted">From clients</span></div>{received.length ? received.map((r) => <ReviewCard key={r.id} review={r} author={data.users.find((u) => u.id === r.fromId)} project={data.projects.find((x) => x.id === r.projectId)?.title} />) : <p className="muted small">No ratings yet.</p>}</section>
+          <section className="stack"><div className="row-between"><SectionTitle icon="award">Ratings given ({given.length})</SectionTitle><span className="small muted">To clients</span></div>{given.length ? given.map((r) => <ReviewCard key={r.id} review={r} author={user} project={data.projects.find((x) => x.id === r.projectId)?.title} />) : <p className="muted small">You rate clients after each completed contract.</p>}</section>
         </div>
       )}
 
       {tab === "account" && (
         <div className="stack-lg" style={{ maxWidth: 760 }}>
           <ActionForm action={updateFreelancerSettings} className="card stack">
-            <h2>Privacy & notifications</h2>
+            <SectionTitle icon="bell">Privacy & notifications</SectionTitle>
             <div>
               {([["publicProfile", "Public profile visibility", "Allow verified clients to discover your profile and portfolio."], ["projectAlerts", "Project & invitation alerts", "Notify me about invitations, offers and matched jobs."], ["messageAlerts", "Message alerts", "Notify me about new messages and scheduled calls."]] as const).map(([key, title, detail]) => (
                 <label className="setting-row" key={key}>
@@ -87,7 +87,7 @@ export default async function FreelancerSettings({ searchParams }: { searchParam
             </div>
             <div><Submit pending="Saving…">Save preferences</Submit></div>
           </ActionForm>
-          <section className="card stack"><h2>Email address</h2><EmailChange currentEmail={user.email} pendingEmail={user.pendingEmail?.email} /></section>
+          <section className="card stack"><SectionTitle icon="mail">Email address</SectionTitle><EmailChange currentEmail={user.email} pendingEmail={user.pendingEmail?.email} /></section>
           <AccountSecurity />
         </div>
       )}

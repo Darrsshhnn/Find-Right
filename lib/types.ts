@@ -11,6 +11,8 @@ export type User = {
   passwordHash: string;
   avatar?: string;
   onboarded: boolean;
+  /** Set the first time the guided tour opens, so it never auto-opens again on any device. */
+  tourSeen?: boolean;
   createdAt: string;
   pendingEmail?: { email: string; codeHash: string; expiresAt: string; attempts: number };
 };
@@ -62,6 +64,8 @@ export type ExperienceItem = {
   description: string;
 };
 
+export type PortfolioLink = { id: string; label: string; url: string };
+
 export type FreelancerProfile = {
   userId: string;
   headline: string;
@@ -79,6 +83,8 @@ export type FreelancerProfile = {
   ai: Record<string, AiLevel>;
   aiProcess: string;
   portfolio: PortfolioItem[];
+  /** Portfolios hosted outside FindRight (Behance, Dribbble, personal site…). */
+  links?: PortfolioLink[];
   experience: ExperienceItem[];
   settings: { publicProfile: boolean; projectAlerts: boolean; messageAlerts: boolean };
 };

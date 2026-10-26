@@ -2,9 +2,9 @@ import type { Metadata } from "next";
 import Icon from "@/components/Icon";
 import ProfileBody from "@/components/ProfileBody";
 import { ActionForm, Submit } from "@/components/ActionForm";
-import { PortfolioCard } from "@/components/cards";
+import { PortfolioCard, PortfolioLinks } from "@/components/cards";
 import { PageHead, Tabs } from "@/components/ui";
-import { addExperience, addPortfolioItem, removeExperience, removePortfolioItem, updateFreelancerProfile } from "@/app/actions/freelancer";
+import { addExperience, addPortfolioItem, addPortfolioLink, removeExperience, removePortfolioItem, removePortfolioLink, updateFreelancerProfile } from "@/app/actions/freelancer";
 import { requireUser } from "@/lib/auth";
 import { AI_LEVELS, CATEGORY_NAMES, LEVELS } from "@/lib/constants";
 import { freelancerById } from "@/lib/queries";
@@ -56,8 +56,24 @@ export default async function FreelancerProfilePage({ searchParams }: { searchPa
       {tab === "portfolio" && (
         <div className="layout-aside">
           <section className="stack">
+            <div className="card stack">
+              <div className="row-between">
+                <div><h3>Portfolio links</h3><p className="small muted">Link portfolios you host outside FindRight — Behance, Dribbble, your own site.</p></div>
+                <span className="badge">{(p.links ?? []).length}/6</span>
+              </div>
+              {(p.links ?? []).length > 0 && (
+                <PortfolioLinks links={p.links!} action={(id) => (
+                  <ActionForm action={removePortfolioLink} showOk={false}><input type="hidden" name="linkId" value={id} /><Submit className="icon-btn link-remove" pending="…" aria-label="Remove link"><Icon name="x" size={14} /></Submit></ActionForm>
+                )} />
+              )}
+              <ActionForm action={addPortfolioLink} className="link-form" resetOnOk>
+                <label className="field">Link<input name="url" type="url" inputMode="url" placeholder="https://behance.net/yourname" required /></label>
+                <label className="field">Label<input name="label" placeholder="Optional, e.g. Behance" maxLength={40} /></label>
+                <Submit className="btn btn-outline" pending="Adding…"><Icon name="plus" size={16} /> Add link</Submit>
+              </ActionForm>
+            </div>
             {p.portfolio.length ? (
-              <div className="grid-3">
+              <div className="grid-2 portfolio-grid">
                 {p.portfolio.map((item) => (
                   <PortfolioCard key={item.id} item={item}>
                     <ActionForm action={removePortfolioItem} showOk={false}><input type="hidden" name="itemId" value={item.id} /><Submit className="btn btn-ghost btn-sm"><Icon name="trash" size={14} /> Remove</Submit></ActionForm>

@@ -3,6 +3,8 @@ import BrandMark from "./BrandMark";
 import GuidedTour from "./GuidedTour";
 import Icon from "./Icon";
 import MenuCloser from "./MenuCloser";
+import MobileMenu, { type MenuItem } from "./MobileMenu";
+import TourButton from "./TourButton";
 import NavLink from "./NavLink";
 import { Avatar, Logo } from "./ui";
 import { logout } from "@/app/actions/auth";
@@ -22,6 +24,11 @@ export default function Shell({ user, subtitle, nav, bottomNav = [], menu, messa
   const unread = notifications.filter((n) => !n.read).length;
   const unreadMessages = notifications.filter((n) => !n.read && n.href.includes("/messages")).length;
   const home = user.role === "admin" ? "/admin" : `/${user.role}`;
+  // Phone menu: every option in one place (main pages, messages, account pages), without duplicates.
+  const mainItems: MenuItem[] = nav.map(({ href, label, icon, count, exact }) => ({ href, label, icon, count, exact }));
+  if (messagesHref && !nav.some((n) => n.href === messagesHref)) mainItems.push({ href: messagesHref, label: "Messages", icon: "chat", count: unreadMessages });
+  const seen = new Set(mainItems.map((i) => i.href));
+  const accountItems: MenuItem[] = [...bottomNav, ...menu].filter((i) => !seen.has(i.href) && seen.add(i.href)).map(({ href, label, icon }) => ({ href, label, icon }));
   return (
     <div className="shell">
       <a href="#main" className="skip-link">Skip to content</a>
@@ -39,11 +46,17 @@ export default function Shell({ user, subtitle, nav, bottomNav = [], menu, messa
       </aside>
       <div className="shell-body">
         <header className="topbar">
+          <MobileMenu
+            sections={[{ label: "Menu", items: mainItems }, ...(accountItems.length ? [{ label: "Account", items: accountItems }] : [])]}
+            header={<div className="row" style={{ flexWrap: "nowrap" }}><Avatar name={user.name} src={user.avatar} /><div style={{ minWidth: 0 }}><b className="truncate" style={{ display: "block" }}>{user.name}</b><span className="small muted truncate" style={{ display: "block" }}>{subtitle}</span></div></div>}
+            top={cta}
+            footer={<>{user.role !== "admin" && <TourButton className="btn btn-light btn-block" label="App guide" />}<form action={logout}><button className="btn btn-danger btn-block"><Icon name="logout" size={16} /> Log out</button></form></>}
+          />
           <span className="topbar-logo"><Logo href={home} /></span>
           <div className="topbar-actions">
             {cta && <span className="hide-mobile" data-tour="cta">{cta}</span>}
             {messagesHref && (
-              <Link href={messagesHref} className="icon-btn" data-tour="messages" aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ""}`}>
+              <Link href={messagesHref} className="icon-btn hide-mobile" data-tour="messages" aria-label={`Messages${unreadMessages ? `, ${unreadMessages} unread` : ""}`}>
                 <Icon name="chat" />
                 {unreadMessages > 0 && <span className="count">{unreadMessages}</span>}
               </Link>
@@ -67,7 +80,7 @@ export default function Shell({ user, subtitle, nav, bottomNav = [], menu, messa
                 </div>
               </div>
             </details>
-            <details className="menu">
+            <details className="menu hide-mobile">
               <summary className="avatar-btn" aria-label="Account menu">
                 <Avatar name={user.name} src={user.avatar} size="sm" />
               </summary>
@@ -84,7 +97,7 @@ export default function Shell({ user, subtitle, nav, bottomNav = [], menu, messa
           <div className="container">{children}</div>
         </main>
       </div>
-      {user.role !== "admin" && <GuidedTour role={user.role as "client" | "freelancer"} />}
+      {user.role !== "admin" && <GuidedTour role={user.role as "client" | "freelancer"} firstLogin={!user.tourSeen} />}
     </div>
   );
 }

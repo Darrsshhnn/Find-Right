@@ -6,7 +6,7 @@ import { AVAILABILITY } from "@/lib/constants";
 import { daysLeft, money, shortDate, timeAgo } from "@/lib/format";
 import { budgetLabel } from "@/lib/jobs";
 import type { ClientView, FreelancerView } from "@/lib/queries";
-import type { Job, PortfolioItem, Review, User } from "@/lib/types";
+import type { Job, PortfolioItem, PortfolioLink, Review, User } from "@/lib/types";
 
 export function JobCard({ job, client, applicants, match, href, invited }: {
   job: Job; client: ClientView | null; applicants: number; match?: { score: number; reasons: string[] }; href: string; invited?: boolean;
@@ -119,5 +119,25 @@ export function ReviewCard({ review, author, project }: { review: Review; author
       </div>
       <small className="muted">{timeAgo(review.createdAt)}{project ? ` · ${project}` : ""}</small>
     </article>
+  );
+}
+
+const linkIcon = (url: string) => (/behance|dribbble|artstation/.test(url) ? "image" : /github/.test(url) ? "layers" : "globe");
+
+/** External portfolio links (Behance, Dribbble, personal site). `action` renders e.g. a remove button per link. */
+export function PortfolioLinks({ links, action }: { links: PortfolioLink[]; action?: (id: string) => React.ReactNode }) {
+  return (
+    <ul className="portfolio-links">
+      {links.map((l) => (
+        <li key={l.id}>
+          <a href={l.url} target="_blank" rel="noopener noreferrer nofollow">
+            <span className="pl-ico"><Icon name={linkIcon(l.url)} size={16} /></span>
+            <span className="pl-text"><b>{l.label}</b><small className="truncate">{l.url.replace(/^https?:\/\/(www\.)?/, "").replace(/\/$/, "")}</small></span>
+            <Icon name="external" size={14} />
+          </a>
+          {action?.(l.id)}
+        </li>
+      ))}
+    </ul>
   );
 }

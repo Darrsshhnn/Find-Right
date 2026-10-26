@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import DashHero from "@/components/DashHero";
 import Icon from "@/components/Icon";
 import TourButton from "@/components/TourButton";
 import { FreelancerCard } from "@/components/cards";
@@ -8,7 +9,8 @@ import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { money, shortDate, timeAgo } from "@/lib/format";
 import { budgetLabel } from "@/lib/jobs";
-import { allFreelancers, clientById, freelancerById } from "@/lib/queries";
+import { allFreelancers, clientById, creditsAvailable, freelancerById } from "@/lib/queries";
+import { STARTER_CREDITS } from "@/lib/constants";
 
 export const metadata: Metadata = { title: "Client dashboard" };
 
@@ -29,6 +31,8 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
     ...openJobs.filter((j) => proposals.some((p) => p.jobId === j.id && p.status === "pending")).map((j) => ({ href: `/client/jobs/${j.id}`, icon: "users", text: `${proposals.filter((p) => p.jobId === j.id && p.status === "pending").length} new proposals on “${j.title}”`, tone: "badge-blue", tag: "Proposals" })),
     ...projects.filter((p) => p.status === "completed" && !data.reviews.some((r) => r.projectId === p.id && r.fromId === user.id)).map((p) => ({ href: `/client/projects/${p.id}`, icon: "star", text: `Leave a review for “${p.title}”`, tone: "badge-green", tag: "Review" })),
   ];
+  const credits = creditsAvailable(user.id, data);
+  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
   const categories = client.profile.categories;
   const recommended = allFreelancers(data)
     .filter((f) => !categories.length || f.profile.disciplines.some((d) => categories.includes(d)))
@@ -38,29 +42,29 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
   return (
     <div className="stack-lg">
       {welcome && <Notice text="Welcome to FindRight! Post your first brief and we'll match you with the right freelancers." />}
-      <section className="hero-card">
-        <div className="stack-sm" style={{ position: "relative", zIndex: 1 }}>
-          <span className="badge"><Icon name="shield" size={13} /> 10% advance after confirmation · rest in escrow until you approve</span>
-          <h1>Welcome, {user.name.split(" ")[0]}</h1>
-          <p>{client.displayName !== user.name ? `${client.displayName} · ` : ""}Manage briefs, proposals, escrow contracts and verified rising designers.</p>
-          <div className="row" style={{ marginTop: 8 }}>
-            <Link href="/client/jobs/new" className="btn btn-primary"><Icon name="plus" size={16} /> Post a job</Link>
-            <Link href="/client/find?available=now" className="btn" style={{ color: "#fff", border: "1px solid rgba(255,255,255,.3)" }}><Icon name="zap" size={16} /> Find someone available now</Link>
-            <Link href="/client/demo" className="btn" style={{ color: "#fff" }}>See how hiring works →</Link>
-            <TourButton className="btn" label="App guide" />
-          </div>
-        </div>
-      </section>
+      <DashHero
+        date={today}
+        badge={<span className="badge"><Icon name="shield" size={13} /> {client.verified ? "Verified client" : "Verification pending"}</span>}
+        title={`Welcome back, ${user.name.split(" ")[0]}`}
+        text={`${client.displayName !== user.name ? `${client.displayName} · ` : ""}Manage briefs, proposals and escrow contracts. A 10% advance starts each project — the rest stays in escrow until you approve.`}
+        actions={<>
+          <Link href="/client/jobs/new" className="btn btn-primary"><Icon name="plus" size={16} /> Post a job</Link>
+          <Link href="/client/find?available=now" className="btn btn-glass"><Icon name="zap" size={16} /> Available now</Link>
+          <Link href="/client/demo" className="btn btn-glass"><Icon name="layers" size={16} /> How hiring works</Link>
+          <TourButton className="btn btn-glass" label="App guide" />
+        </>}
+        ring={{ value: (credits / STARTER_CREDITS) * 100, display: `${credits}/${STARTER_CREDITS}`, label: "Starter credits left" }}
+        stats={[
+          { icon: "briefcase", label: "Open jobs", value: openJobs.length, note: `${proposals.filter((p) => p.status === "pending").length} proposals to review`, href: "/client/jobs" },
+          { icon: "folder", label: "Active contracts", value: active.length, note: `${projects.filter((p) => p.status === "completed").length} completed`, href: "/client/projects" },
+          { icon: "lock", label: "Held in escrow", value: money(escrow), note: "Released only on approval", href: "/client/payments" },
+          { icon: "star", label: "Your client rating", value: client.rating.count ? `${client.rating.average} ★` : "—", note: `${client.rating.count} reviews from freelancers` },
+        ]}
+      />
 
       {client.profile.verification === "pending" && <p className="alert alert-warn"><Icon name="clock" /> Your company verification is being reviewed. You can post jobs now — the verified badge appears on your briefs once approved.</p>}
       {client.profile.verification === "rejected" && <p className="alert alert-error">Company verification needs changes: {client.profile.verificationNote} <Link className="link" href="/client/profile">Update details</Link></p>}
 
-      <section className="grid-4">
-        <div className="stat"><span>Open jobs</span><strong>{openJobs.length}</strong><small>{proposals.filter((p) => p.status === "pending").length} proposals to review</small></div>
-        <div className="stat"><span>Active contracts</span><strong>{active.length}</strong><small>{projects.filter((p) => p.status === "completed").length} completed</small></div>
-        <div className="stat"><span>Held in escrow</span><strong>{money(escrow)}</strong><small>Released only on approval</small></div>
-        <div className="stat"><span>Your client rating</span><strong>{client.rating.count ? `${client.rating.average} ★` : "—"}</strong><small>{client.rating.count} reviews from freelancers</small></div>
-      </section>
 
       <div className="layout-aside">
         <div className="stack-lg">

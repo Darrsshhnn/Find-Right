@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AvailabilitySwitch from "@/components/AvailabilitySwitch";
+import DashHero from "@/components/DashHero";
 import Icon from "@/components/Icon";
 import TourButton from "@/components/TourButton";
 import { JobCard } from "@/components/cards";
@@ -18,6 +19,7 @@ export default async function FreelancerHome({ searchParams }: { searchParams: P
   const data = db();
   const f = freelancerById(user.id, data)!;
   const hour = new Date().getHours();
+  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const applied = new Set(data.proposals.filter((p) => p.freelancerId === user.id && p.status !== "withdrawn").map((p) => p.jobId));
   const invitations = data.invitations.filter((i) => i.freelancerId === user.id && i.status === "pending" && data.jobs.find((j) => j.id === i.jobId)?.status === "open");
@@ -42,22 +44,25 @@ export default async function FreelancerHome({ searchParams }: { searchParams: P
   return (
     <div className="stack-lg">
       {welcome && <Notice text="Your profile is live! Complete the trust steps to rank higher in client searches." />}
-      <section className="hero-card">
-        <div className="stack-sm" style={{ position: "relative", zIndex: 1 }}>
-          <span className="badge"><Icon name={f.tier === "Rising talent" ? "sparkle" : "shield"} size={13} /> {f.tier} · verified freelancer</span>
-          <h1>{greeting}, {user.name.split(" ")[0]}.</h1>
-          <p>{recommended.length ? `${recommended.length} genuine projects match your ${f.profile.disciplines.slice(0, 2).join(" & ")} experience${invitations.length ? ` and ${invitations.length} client${invitations.length > 1 ? "s" : ""} invited you directly` : ""}.` : "Keep your availability and portfolio fresh — new verified briefs arrive daily."}</p>
-          <div className="row" style={{ marginTop: 8 }}><AvailabilitySwitch value={f.profile.availability} /><Link href="/freelancer/jobs" className="btn btn-primary">Discover matched work</Link>{invitations.length > 0 && <Link href="/freelancer/invitations" className="btn" style={{ color: "#fff", border: "1px solid rgba(255,255,255,.3)" }}>View invitations ({invitations.length})</Link>}<TourButton className="btn" label="App guide" /></div>
-        </div>
-        <div className="ring" style={{ "--value": f.trust } as React.CSSProperties}><div><strong>{f.trust}</strong><small>Trust score</small></div></div>
-      </section>
-
-      <section className="grid-4">
-        <div className="stat"><span>Direct invitations</span><strong>{invitations.length}</strong><small>{invitations.length ? "Respond to stand out" : "From verified clients"}</small></div>
-        <div className="stat"><span>Open proposals</span><strong>{proposals.length}</strong><small>{proposals.filter((p) => p.status === "shortlisted").length} shortlisted</small></div>
-        <div className="stat"><span>Secured in escrow</span><strong>{money(escrow)}</strong><small>Released on approval</small></div>
-        <div className="stat"><span>Average rating</span><strong>{f.rating.count ? f.rating.average.toFixed(1) : "—"}</strong><small>{f.completed} completed · {f.onTime}% on time</small></div>
-      </section>
+      <DashHero
+        date={today}
+        badge={<span className="badge"><Icon name={f.tier === "Rising talent" ? "sparkle" : "shield"} size={13} /> {f.tier} · verified freelancer</span>}
+        title={`${greeting}, ${user.name.split(" ")[0]}`}
+        text={recommended.length ? `${recommended.length} genuine projects match your ${f.profile.disciplines.slice(0, 2).join(" & ")} experience${invitations.length ? ` and ${invitations.length} client${invitations.length > 1 ? "s" : ""} invited you directly` : ""}.` : "Keep your availability and portfolio fresh — new verified briefs arrive daily."}
+        actions={<>
+          <AvailabilitySwitch value={f.profile.availability} />
+          <Link href="/freelancer/jobs" className="btn btn-primary"><Icon name="search" size={16} /> Discover matched work</Link>
+          {invitations.length > 0 && <Link href="/freelancer/invitations" className="btn btn-glass"><Icon name="mail" size={16} /> Invitations ({invitations.length})</Link>}
+          <TourButton className="btn btn-glass" label="App guide" />
+        </>}
+        ring={{ value: f.trust, display: String(f.trust), label: "Trust score" }}
+        stats={[
+          { icon: "mail", label: "Direct invitations", value: invitations.length, note: invitations.length ? "Respond to stand out" : "From verified clients", href: "/freelancer/invitations" },
+          { icon: "send", label: "Open proposals", value: proposals.length, note: `${proposals.filter((p) => p.status === "shortlisted").length} shortlisted`, href: "/freelancer/proposals" },
+          { icon: "lock", label: "Secured in escrow", value: money(escrow), note: "Released on approval", href: "/freelancer/earnings" },
+          { icon: "star", label: "Average rating", value: f.rating.count ? f.rating.average.toFixed(1) : "—", note: `${f.completed} completed · ${f.onTime}% on time` },
+        ]}
+      />
 
       <div className="layout-aside">
         <div className="stack-lg">

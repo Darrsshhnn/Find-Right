@@ -28,7 +28,7 @@ export default function Landing() {
   return (
     <div className="public landing">
       <LogoIntro />
-      <AnimatedBackground />
+      <AnimatedBackground lively />
       <PublicHeader />
       <main className="public-main" id="main">
         <div className="container">

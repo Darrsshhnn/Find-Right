@@ -1,3 +1,4 @@
+import { SectionTitle } from "./ui";
 import { ActionForm, Submit } from "./ActionForm";
 import { changePassword } from "@/app/actions/shared";
 import { logout } from "@/app/actions/auth";
@@ -5,7 +6,7 @@ import { logout } from "@/app/actions/auth";
 export default function AccountSecurity() {
   return (
     <section className="card stack">
-      <h2>Account security</h2>
+      <SectionTitle icon="key">Account security</SectionTitle>
       <ActionForm action={changePassword} className="stack" resetOnOk>
         <div className="form-grid">
           <label className="field">Current password<input type="password" name="current" autoComplete="current-password" /></label>

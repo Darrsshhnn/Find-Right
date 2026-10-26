@@ -82,7 +82,7 @@ export default function Workspace({ project, viewer }: { project: Project; viewe
                 <>
                   <details className="faq" id="edit-agreement">
                     <summary><Icon name="edit" size={14} /> Edit agreement</summary>
-                    <div style={{ marginTop: 16 }}>
+                    <div>
                       <ContractBuilder
                         mode="edit"
                         id={project.id}
@@ -155,7 +155,7 @@ export default function Workspace({ project, viewer }: { project: Project; viewe
 
               <details className="faq">
                 <summary><Icon name="lock" size={14} /> Escrow flow for this project</summary>
-                <div style={{ marginTop: 16 }}>
+                <div>
                   <EscrowFlow feePercent={project.feePercent ?? 0} steps={project.milestones.map((m) => ({ title: m.title, percent: m.percent, clientPays: m.charge, fee: feeOf(m.amount, project.feePercent), freelancerGets: m.amount - feeOf(m.amount, project.feePercent), status: m.status }))} />
                 </div>
               </details>
@@ -297,7 +297,7 @@ export default function Workspace({ project, viewer }: { project: Project; viewe
             <details className="faq">
               <summary>View the signed agreement</summary>
               <a className="btn btn-light btn-sm" style={{ marginTop: 16 }} href={`/api/agreements/${project.id}`} download><Icon name="download" size={14} /> Download agreement (PDF)</a>
-              <div style={{ marginTop: 16 }}><Contract project={project} clientName={client.displayName} freelancerName={freelancer.user.name} /></div>
+              <div><Contract project={project} clientName={client.displayName} freelancerName={freelancer.user.name} /></div>
             </details>
           )}
         </div>

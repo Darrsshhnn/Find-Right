@@ -32,12 +32,12 @@ export function ActionForm({ action, children, className, resetOnOk = false, sho
   );
 }
 
-export function Submit({ children, className = "btn btn-primary", pending: pendingText, name, value, disabled }: {
-  children: React.ReactNode; className?: string; pending?: string; name?: string; value?: string; disabled?: boolean;
+export function Submit({ children, className = "btn btn-primary", pending: pendingText, name, value, disabled, "aria-label": ariaLabel }: {
+  children: React.ReactNode; className?: string; pending?: string; name?: string; value?: string; disabled?: boolean; "aria-label"?: string;
 }) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" className={className} disabled={pending || disabled} name={name} value={value} aria-busy={pending}>
+    <button type="submit" className={className} disabled={pending || disabled} name={name} value={value} aria-busy={pending} aria-label={ariaLabel}>
       {pending && pendingText ? pendingText : children}
     </button>
   );

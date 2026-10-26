@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Icon from "./Icon";
-import { PortfolioCard, ReviewCard } from "./cards";
+import { PortfolioCard, PortfolioLinks, ReviewCard } from "./cards";
 import { AiBadge, AiMeter, AvailabilityBadge, Avatar, Rating, Stars } from "./ui";
 import { db } from "@/lib/db";
 import { shortDate } from "@/lib/format";
@@ -70,7 +70,8 @@ export default function ProfileBody({ f, portfolioActions, reviewPage = 1, pageH
 
       <section className="stack">
         <div className="row-between"><h2>Portfolio</h2><span className="small muted">{portfolio.filter((p) => p.source === "platform").length} client-verified · {portfolio.length} total</span></div>
-        {portfolio.length ? <div className="grid-3">{portfolio.map((p) => <PortfolioCard key={p.id} item={p} href={workHref?.(p.id)}>{portfolioActions?.(p.id)}</PortfolioCard>)}</div> : <p className="muted">No portfolio pieces yet.</p>}
+        {(f.profile.links ?? []).length > 0 && <PortfolioLinks links={f.profile.links!} />}
+        {portfolio.length ? <div className="grid-2 portfolio-grid">{portfolio.map((p) => <PortfolioCard key={p.id} item={p} href={workHref?.(p.id)}>{portfolioActions?.(p.id)}</PortfolioCard>)}</div> : <p className="muted">No portfolio pieces yet.</p>}
       </section>
 
       <section className="stack" id="reviews">

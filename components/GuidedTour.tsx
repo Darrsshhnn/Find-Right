@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
+import { markTourSeen } from "@/app/actions/shared";
 
 type Step = { icon: string; title: string; text: string; target?: string; href?: string; cta?: string };
 
@@ -28,8 +29,11 @@ const STEPS: Record<"client" | "freelancer", Step[]> = {
 
 const key = (role: string) => `findright.tour.${role}.v1`;
 
-/** First-visit guided tour. Re-open any time with `window.dispatchEvent(new Event("findright:tour"))`. */
-export default function GuidedTour({ role }: { role: "client" | "freelancer" }) {
+/**
+ * Guided tour that opens by itself only on a user's first login (remembered on the server and in this browser).
+ * Re-open any time with `window.dispatchEvent(new Event("findright:tour"))`.
+ */
+export default function GuidedTour({ role, firstLogin }: { role: "client" | "freelancer"; firstLogin: boolean }) {
   const steps = STEPS[role];
   const [open, setOpen] = useState(false);
   const [i, setI] = useState(0);
@@ -42,13 +46,17 @@ export default function GuidedTour({ role }: { role: "client" | "freelancer" }) 
   }, [role]);
 
   useEffect(() => {
-    let seen = false;
-    try { seen = localStorage.getItem(key(role)) === "done"; } catch { seen = false; }
-    const timer = seen ? undefined : window.setTimeout(() => setOpen(true), 600);
+    let seen = !firstLogin;
+    try { seen = seen || localStorage.getItem(key(role)) === "done"; } catch { /* storage unavailable — rely on the server flag */ }
+    if (firstLogin) markTourSeen().catch(() => {});
+    const timer = seen ? undefined : window.setTimeout(() => {
+      setOpen(true);
+      try { localStorage.setItem(key(role), "done"); } catch { /* ignore */ }
+    }, 600);
     const reopen = () => { setI(0); setOpen(true); };
     window.addEventListener("findright:tour", reopen);
     return () => { window.clearTimeout(timer); window.removeEventListener("findright:tour", reopen); };
-  }, [role]);
+  }, [role, firstLogin]);
 
   useEffect(() => {
     if (!open) return;

@@ -220,6 +220,37 @@ export async function addProjectToPortfolio(_: ActionState, form: FormData): Pro
   return refresh("Added as a client-verified portfolio piece.");
 }
 
+const KNOWN_SITES: [string, string][] = [["behance.net", "Behance"], ["dribbble.com", "Dribbble"], ["github.com", "GitHub"], ["linkedin.com", "LinkedIn"], ["instagram.com", "Instagram"], ["figma.com", "Figma"], ["artstation.com", "ArtStation"], ["notion.site", "Notion"]];
+
+export async function addPortfolioLink(_: ActionState, form: FormData): Promise<ActionState> {
+  const user = await freelancer();
+  let raw = str(form, "url");
+  if (!raw) return { error: "Paste the link to your portfolio." };
+  if (!/^https?:\/\//i.test(raw)) raw = `https://${raw}`;
+  let url: URL;
+  try { url = new URL(raw); } catch { return { error: "That doesn't look like a valid link." }; }
+  if (!url.hostname.includes(".")) return { error: "That doesn't look like a valid link." };
+  const host = url.hostname.replace(/^www\./, "");
+  const label = str(form, "label").slice(0, 40) || KNOWN_SITES.find(([d]) => host.endsWith(d))?.[1] || host;
+  const existing = db().freelancers.find((f) => f.userId === user.id)?.links ?? [];
+  if (existing.length >= 6) return { error: "You can add up to 6 portfolio links." };
+  if (existing.some((l) => l.url === url.href)) return { error: "You've already added this link." };
+  mutate((d) => {
+    const p = d.freelancers.find((f) => f.userId === user.id)!;
+    p.links = [...(p.links ?? []), { id: uid("pl"), label, url: url.href }];
+  });
+  return refresh("Portfolio link added.");
+}
+
+export async function removePortfolioLink(_: ActionState, form: FormData): Promise<ActionState> {
+  const user = await freelancer();
+  mutate((d) => {
+    const p = d.freelancers.find((f) => f.userId === user.id)!;
+    p.links = (p.links ?? []).filter((l) => l.id !== str(form, "linkId"));
+  });
+  return refresh("Portfolio link removed.");
+}
+
 export async function addExperience(_: ActionState, form: FormData): Promise<ActionState> {
   const user = await freelancer();
   const title = str(form, "title");
