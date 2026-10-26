@@ -1099,3 +1099,29 @@ a.dash-stat:hover { background: rgba(255, 255, 255, 0.14); transform: translateY
 .link-remove { width: 32px; height: 32px; }
 .link-form { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) auto; gap: 12px var(--s2); align-items: end; }
 @media (max-width: 720px) { .link-form { grid-template-columns: 1fr; } .link-form .btn { width: 100%; } }
+/* compact dashboard hero */
+.dash-hero { padding: var(--s3) var(--s4); gap: var(--s3); }
+.dash-hero-copy { gap: var(--s1); }
+.dash-ring { width: 112px; height: 112px; }
+.dash-ring > div { width: 88px; height: 88px; }
+.dash-ring strong { font-size: 24px; }
+.dash-stat { padding: 12px var(--s2); }
+.dash-stat dd { font-size: 22px; margin-top: 2px; }
+@media (max-width: 720px) {
+  .dash-hero { padding: var(--s3) var(--s2); }
+  .dash-hero-main { flex-direction: row; align-items: flex-start; }
+  .dash-ring { width: 72px; height: 72px; order: 2; }
+  .dash-ring > div { width: 56px; height: 56px; }
+  .dash-ring strong { font-size: 16px; }
+  .dash-ring small { display: none; }
+  .dash-hero h1 { font-size: 1.3rem; }
+  .dash-hero h1 .wave svg { width: 22px; height: 22px; }
+}
+/* small phones: logo + Log in + Sign up + menu fit on one row */
+@media (max-width: 420px) {
+  .public-header .logo { font-size: 16px; gap: 6px; }
+  .public-header .logo-mark { height: 26px; }
+  .public-header .logo-mark img { height: 22px; }
+  .public-actions { gap: 6px; }
+  .public-actions .btn-sm { padding-inline: 10px; font-size: 13px; }
+}

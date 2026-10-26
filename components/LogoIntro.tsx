@@ -10,17 +10,19 @@ const LONG = "M404.408 407.594C396.151 399.085 396.151 385.288 404.408 376.779L5
 export default function LogoIntro() {
   const [visible, setVisible] = useState(true);
   useEffect(() => {
+    if (!visible) return;
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const timer = window.setTimeout(() => setVisible(false), reduced ? 1500 : 2900);
     const skip = (e: KeyboardEvent) => { if (e.key === "Escape" || e.key === "Enter") setVisible(false); };
     document.addEventListener("keydown", skip);
+    // Lock scrolling only while the intro covers the page; unlocked as soon as it hides.
     document.documentElement.classList.add("intro-lock");
     return () => {
       window.clearTimeout(timer);
       document.removeEventListener("keydown", skip);
       document.documentElement.classList.remove("intro-lock");
     };
-  }, []);
+  }, [visible]);
   if (!visible) return null;
   return (
     <div className="intro" role="presentation" onClick={() => setVisible(false)}>

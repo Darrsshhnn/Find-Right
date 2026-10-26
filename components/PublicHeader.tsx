@@ -26,7 +26,7 @@ export default async function PublicHeader({ minimal = false }: { minimal?: bool
             <Link href={homeFor(user)} className="btn btn-primary btn-sm">Go to dashboard</Link>
           ) : (
             <>
-              <Link href="/login" className="btn btn-light btn-sm hide-mobile">Log in</Link>
+              <Link href="/login" className="btn btn-light btn-sm">Log in</Link>
               <Link href="/get-started" className="btn btn-primary btn-sm">Sign up</Link>
             </>
           )}

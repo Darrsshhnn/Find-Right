@@ -48,19 +48,18 @@ export default async function FreelancerHome({ searchParams }: { searchParams: P
         date={today}
         badge={<span className="badge"><Icon name={f.tier === "Rising talent" ? "sparkle" : "shield"} size={13} /> {f.tier} · verified freelancer</span>}
         title={`${greeting}, ${user.name.split(" ")[0]}`}
-        text={recommended.length ? `${recommended.length} genuine projects match your ${f.profile.disciplines.slice(0, 2).join(" & ")} experience${invitations.length ? ` and ${invitations.length} client${invitations.length > 1 ? "s" : ""} invited you directly` : ""}.` : "Keep your availability and portfolio fresh — new verified briefs arrive daily."}
+        text={recommended.length ? `${recommended.length} new project${recommended.length > 1 ? "s" : ""} match your skills.` : "New verified briefs arrive daily."}
         actions={<>
           <AvailabilitySwitch value={f.profile.availability} />
-          <Link href="/freelancer/jobs" className="btn btn-primary"><Icon name="search" size={16} /> Discover matched work</Link>
-          {invitations.length > 0 && <Link href="/freelancer/invitations" className="btn btn-glass"><Icon name="mail" size={16} /> Invitations ({invitations.length})</Link>}
+          <Link href="/freelancer/jobs" className="btn btn-primary"><Icon name="search" size={16} /> Find work</Link>
           <TourButton className="btn btn-glass" label="App guide" />
         </>}
         ring={{ value: f.trust, display: String(f.trust), label: "Trust score" }}
         stats={[
-          { icon: "mail", label: "Direct invitations", value: invitations.length, note: invitations.length ? "Respond to stand out" : "From verified clients", href: "/freelancer/invitations" },
-          { icon: "send", label: "Open proposals", value: proposals.length, note: `${proposals.filter((p) => p.status === "shortlisted").length} shortlisted`, href: "/freelancer/proposals" },
-          { icon: "lock", label: "Secured in escrow", value: money(escrow), note: "Released on approval", href: "/freelancer/earnings" },
-          { icon: "star", label: "Average rating", value: f.rating.count ? f.rating.average.toFixed(1) : "—", note: `${f.completed} completed · ${f.onTime}% on time` },
+          { icon: "mail", label: "Invitations", value: invitations.length, href: "/freelancer/invitations" },
+          { icon: "send", label: "Open proposals", value: proposals.length, href: "/freelancer/proposals" },
+          { icon: "lock", label: "Secured in escrow", value: money(escrow), href: "/freelancer/earnings" },
+          { icon: "star", label: "Rating", value: f.rating.count ? `${f.rating.average.toFixed(1)} ★` : "—" },
         ]}
       />
 

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import Icon from "./Icon";
 
-export type HeroStat = { icon: string; label: string; value: string | number; note: string; href?: string };
+export type HeroStat = { icon: string; label: string; value: string | number; href?: string };
 
 /** Dashboard header shared by client and freelancer: greeting, actions, a progress ring and a KPI strip. */
 export default function DashHero({ date, badge, title, text, actions, ring, stats }: {
@@ -35,7 +35,6 @@ export default function DashHero({ date, badge, title, text, actions, ring, stat
             <>
               <dt><span className="dash-stat-ico"><Icon name={s.icon} size={16} /></span>{s.label}</dt>
               <dd>{s.value}</dd>
-              <small>{s.note}</small>
             </>
           );
           return s.href

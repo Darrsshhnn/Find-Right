@@ -46,19 +46,18 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
         date={today}
         badge={<span className="badge"><Icon name="shield" size={13} /> {client.verified ? "Verified client" : "Verification pending"}</span>}
         title={`Welcome back, ${user.name.split(" ")[0]}`}
-        text={`${client.displayName !== user.name ? `${client.displayName} · ` : ""}Manage briefs, proposals and escrow contracts. A 10% advance starts each project — the rest stays in escrow until you approve.`}
+        text={`${client.displayName !== user.name ? `${client.displayName} · ` : ""}${todo.length ? `${todo.length} thing${todo.length > 1 ? "s" : ""} need${todo.length > 1 ? "" : "s"} your attention.` : "You're all caught up."}`}
         actions={<>
           <Link href="/client/jobs/new" className="btn btn-primary"><Icon name="plus" size={16} /> Post a job</Link>
-          <Link href="/client/find?available=now" className="btn btn-glass"><Icon name="zap" size={16} /> Available now</Link>
-          <Link href="/client/demo" className="btn btn-glass"><Icon name="layers" size={16} /> How hiring works</Link>
+          <Link href="/client/find" className="btn btn-glass"><Icon name="search" size={16} /> Find talent</Link>
           <TourButton className="btn btn-glass" label="App guide" />
         </>}
         ring={{ value: (credits / STARTER_CREDITS) * 100, display: `${credits}/${STARTER_CREDITS}`, label: "Starter credits left" }}
         stats={[
-          { icon: "briefcase", label: "Open jobs", value: openJobs.length, note: `${proposals.filter((p) => p.status === "pending").length} proposals to review`, href: "/client/jobs" },
-          { icon: "folder", label: "Active contracts", value: active.length, note: `${projects.filter((p) => p.status === "completed").length} completed`, href: "/client/projects" },
-          { icon: "lock", label: "Held in escrow", value: money(escrow), note: "Released only on approval", href: "/client/payments" },
-          { icon: "star", label: "Your client rating", value: client.rating.count ? `${client.rating.average} ★` : "—", note: `${client.rating.count} reviews from freelancers` },
+          { icon: "briefcase", label: "Open jobs", value: openJobs.length, href: "/client/jobs" },
+          { icon: "folder", label: "Active contracts", value: active.length, href: "/client/projects" },
+          { icon: "lock", label: "Held in escrow", value: money(escrow), href: "/client/payments" },
+          { icon: "star", label: "Your rating", value: client.rating.count ? `${client.rating.average} ★` : "—" },
         ]}
       />
 
