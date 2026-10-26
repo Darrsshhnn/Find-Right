@@ -1,38 +1,49 @@
 import "server-only";
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db, mutate, uid } from "./db";
+import { db } from "./db";
 import type { Role, User } from "./types";
 
 const COOKIE = "findright_session";
 const THIRTY_DAYS = 30 * 86_400_000;
 
+// Sessions are signed cookies (userId.expiry.signature), so signing in needs no server-side storage and
+// works across serverless instances. Set SESSION_SECRET in production.
+const SECRET = process.env.SESSION_SECRET || "findright-demo-session-secret-change-me";
+if (!process.env.SESSION_SECRET && process.env.NODE_ENV === "production") {
+  console.warn("[findright] SESSION_SECRET is not set — using the demo secret. Set it in your hosting environment.");
+}
+
+const sign = (payload: string) => createHmac("sha256", SECRET).update(payload).digest("base64url");
+
+function verify(token: string): string | null {
+  const [userId, expires, signature] = token.split(".");
+  if (!userId || !expires || !signature) return null;
+  const expected = Buffer.from(sign(`${userId}.${expires}`));
+  const given = Buffer.from(signature);
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) return null;
+  return Number(expires) > Date.now() ? userId : null;
+}
+
 export async function createSession(userId: string) {
-  const id = uid("ss");
-  const expiresAt = new Date(Date.now() + THIRTY_DAYS);
-  mutate((d) => {
-    d.sessions = d.sessions.filter((s) => new Date(s.expiresAt) > new Date());
-    d.sessions.push({ id, userId, expiresAt: expiresAt.toISOString() });
-  });
+  const expires = Date.now() + THIRTY_DAYS;
+  const payload = `${userId}.${expires}`;
   const jar = await cookies();
-  jar.set(COOKIE, id, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", expires: expiresAt });
+  jar.set(COOKIE, `${payload}.${sign(payload)}`, { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/", expires: new Date(expires) });
 }
 
 export async function destroySession() {
   const jar = await cookies();
-  const id = jar.get(COOKIE)?.value;
-  if (id) mutate((d) => { d.sessions = d.sessions.filter((s) => s.id !== id); });
   jar.delete(COOKIE);
 }
 
 export async function currentUser(): Promise<User | null> {
   const jar = await cookies();
-  const id = jar.get(COOKIE)?.value;
-  if (!id) return null;
-  const data = db();
-  const session = data.sessions.find((s) => s.id === id && new Date(s.expiresAt) > new Date());
-  if (!session) return null;
-  return data.users.find((u) => u.id === session.userId) ?? null;
+  const token = jar.get(COOKIE)?.value;
+  const userId = token ? verify(token) : null;
+  if (!userId) return null;
+  return db().users.find((u) => u.id === userId) ?? null;
 }
 
 export function homeFor(user: User) {

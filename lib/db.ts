@@ -1,23 +1,33 @@
 import "server-only";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { DB } from "./types";
 import { createSeed } from "./seed";
 
-export const DATA_DIR = path.join(process.cwd(), "data");
+/**
+ * Where the JSON store lives. Serverless hosts (Vercel) have a read-only project folder, so there the
+ * store uses the writable temp directory — data then lasts only as long as that server instance.
+ * Set FINDRIGHT_DATA_DIR to override; move to a real database for production.
+ */
+export const DATA_DIR = process.env.FINDRIGHT_DATA_DIR
+  || (process.env.VERCEL ? path.join(os.tmpdir(), "findright") : path.join(process.cwd(), "data"));
 export const UPLOAD_DIR = path.join(DATA_DIR, "uploads");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 
-const store = globalThis as unknown as { __findrightDb?: DB };
+const store = globalThis as unknown as { __findrightDb?: DB; __findrightWriteWarned?: boolean };
 
 function load(): DB {
   if (store.__findrightDb) return store.__findrightDb;
-  fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-  let db: DB;
-  if (fs.existsSync(DB_FILE)) {
-    db = JSON.parse(fs.readFileSync(DB_FILE, "utf8")) as DB;
-  } else {
+  let db: DB | undefined;
+  try {
+    fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    if (fs.existsSync(DB_FILE)) db = JSON.parse(fs.readFileSync(DB_FILE, "utf8")) as DB;
+  } catch (error) {
+    console.warn("[findright] Could not read the data store, starting from seed data.", error);
+  }
+  if (!db) {
     db = createSeed();
     persist(db);
   }
@@ -26,9 +36,17 @@ function load(): DB {
 }
 
 function persist(db: DB) {
-  const tmp = `${DB_FILE}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
-  fs.renameSync(tmp, DB_FILE);
+  try {
+    const tmp = `${DB_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+    fs.renameSync(tmp, DB_FILE);
+  } catch (error) {
+    // Keep serving from memory rather than failing the request (e.g. read-only filesystem).
+    if (!store.__findrightWriteWarned) {
+      console.warn(`[findright] Could not write ${DB_FILE}; changes are kept in memory only.`, error);
+      store.__findrightWriteWarned = true;
+    }
+  }
 }
 
 /** Read-only snapshot of the database. */
