@@ -5,7 +5,7 @@ import Icon from "@/components/Icon";
 import { PageHead } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { money } from "@/lib/format";
+import { TIME_ZONE, money } from "@/lib/format";
 import { freelancerById } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Analytics" };
@@ -29,7 +29,7 @@ export default async function Analytics() {
   const earnings: Point[] = months.map((m) => {
     const next = new Date(m.getFullYear(), m.getMonth() + 1, 1);
     const net = txs.filter((t) => { const d = new Date(t.createdAt); return d >= m && d < next; }).reduce((s, t) => s + (t.type === "fee" ? -t.amount : t.amount), 0);
-    return { label: m.toLocaleDateString("en-IN", { month: "short" }), value: Math.max(0, net), display: money(Math.max(0, net)) };
+    return { label: m.toLocaleDateString("en-IN", { month: "short", timeZone: TIME_ZONE }), value: Math.max(0, net), display: money(Math.max(0, net)) };
   });
   const last = earnings[MONTHS - 1]!.value;
   const prev = earnings[MONTHS - 2]!.value;
@@ -51,7 +51,7 @@ export default async function Analytics() {
   const reviews = data.reviews.filter((r) => r.toId === user.id).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const ratingTrend: Point[] = reviews.map((r, i) => {
     const avg = Math.round((reviews.slice(0, i + 1).reduce((s, x) => s + x.rating, 0) / (i + 1)) * 10) / 10;
-    return { label: new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short" }), value: avg, display: `${avg.toFixed(1)} ★ average` };
+    return { label: new Date(r.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: TIME_ZONE }), value: avg, display: `${avg.toFixed(1)} ★ average` };
   });
   const avgOf = (k: "communication" | "quality" | "timeliness") => (reviews.length ? reviews.reduce((s, r) => s + r[k], 0) / reviews.length : 0);
   const breakdown = [["Quality of work", avgOf("quality")], ["Communication", avgOf("communication")], ["Timeliness", avgOf("timeliness")]] as const;

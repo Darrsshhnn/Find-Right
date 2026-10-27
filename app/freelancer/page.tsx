@@ -8,7 +8,7 @@ import { JobCard } from "@/components/cards";
 import { Empty, Notice, ProjectStatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { money, shortDate } from "@/lib/format";
+import { TIME_ZONE, hourNow, money, shortDate } from "@/lib/format";
 import { clientById, freelancerById, matchScore } from "@/lib/queries";
 
 export const metadata: Metadata = { title: "Freelancer workspace" };
@@ -18,8 +18,8 @@ export default async function FreelancerHome({ searchParams }: { searchParams: P
   const { welcome } = await searchParams;
   const data = db();
   const f = freelancerById(user.id, data)!;
-  const hour = new Date().getHours();
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const hour = hourNow();
+  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: TIME_ZONE });
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
   const applied = new Set(data.proposals.filter((p) => p.freelancerId === user.id && p.status !== "withdrawn").map((p) => p.jobId));
   const invitations = data.invitations.filter((i) => i.freelancerId === user.id && i.status === "pending" && data.jobs.find((j) => j.id === i.jobId)?.status === "open");

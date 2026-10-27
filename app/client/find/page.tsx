@@ -88,12 +88,15 @@ export default async function FindTalent({ searchParams }: { searchParams: Promi
       <PageHead title="Find freelancers" description="Search verified designers by category, experience level and AI usage." actions={<Link href="/client/jobs/new" className="btn btn-primary"><Icon name="plus" size={16} /> Create a new project</Link>} />
 
       <div className="stack-lg">
-        <form className="row" role="search" style={{ flexWrap: "wrap" }}>
-          {Object.entries(params).filter(([k]) => k !== "q").flatMap(([k, v]) => many(v).map((x) => <input key={`${k}-${x}`} type="hidden" name={k} value={x} />))}
-          <label className="grow" style={{ minWidth: 240 }}>
-            <span className="sr-only">Search designers, skills or tools</span>
-            <input className="input" type="search" name="q" defaultValue={p.q} placeholder="Search designers, skills or tools…" />
-          </label>
+        <div className="row" style={{ flexWrap: "wrap" }}>
+          <form className="grow" role="search" style={{ minWidth: 240, display: "flex" }}>
+            {Object.entries(params).filter(([k]) => k !== "q").flatMap(([k, v]) => many(v).map((x) => <input key={`${k}-${x}`} type="hidden" name={k} value={x} />))}
+            <label className="grow" style={{ minWidth: 240 }}>
+              <span className="sr-only">Search designers, skills or tools</span>
+              <input className="input" type="search" name="q" defaultValue={p.q} placeholder="Search designers, skills or tools…" />
+            </label>
+          </form>
+          {/* The filters are their own <form> inside the drawer, so they must not sit inside the search form. */}
           <Drawer
             label={<><Icon name="filter" size={16} /> Filters</>}
             title="Filters"
@@ -103,7 +106,7 @@ export default async function FindTalent({ searchParams }: { searchParams: Promi
             <FilterFields id="filters" p={p} languages={languages} locations={locations} maxRate={maxRate} jobs={myJobs.map((j) => ({ id: j.id, title: j.title }))} />
           </Drawer>
           <Link href="/client/saved" className="btn btn-light"><Icon name="heart" size={16} /> Saved designers ({client.profile.saved.length})</Link>
-        </form>
+        </div>
 
         <nav className="chips" aria-label="Categories">
           <Link href={categoryHref("")} className={`chip chip-lg${!p.category ? " active" : ""}`} aria-current={!p.category ? "page" : undefined}>All designers</Link>

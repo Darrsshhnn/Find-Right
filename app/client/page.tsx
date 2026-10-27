@@ -7,7 +7,7 @@ import { FreelancerCard } from "@/components/cards";
 import { Avatar, Empty, Notice, ProjectStatusBadge } from "@/components/ui";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { money, shortDate, timeAgo } from "@/lib/format";
+import { TIME_ZONE, money, shortDate, timeAgo } from "@/lib/format";
 import { budgetLabel } from "@/lib/jobs";
 import { allFreelancers, clientById, creditsAvailable, freelancerById } from "@/lib/queries";
 import { STARTER_CREDITS } from "@/lib/constants";
@@ -32,7 +32,7 @@ export default async function ClientHome({ searchParams }: { searchParams: Promi
     ...projects.filter((p) => p.status === "completed" && !data.reviews.some((r) => r.projectId === p.id && r.fromId === user.id)).map((p) => ({ href: `/client/projects/${p.id}`, icon: "star", text: `Leave a review for “${p.title}”`, tone: "badge-green", tag: "Review" })),
   ];
   const credits = creditsAvailable(user.id, data);
-  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" });
+  const today = new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: TIME_ZONE });
   const categories = client.profile.categories;
   const recommended = allFreelancers(data)
     .filter((f) => !categories.length || f.profile.disciplines.some((d) => categories.includes(d)))

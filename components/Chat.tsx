@@ -9,7 +9,7 @@ import VideoCall from "./VideoCall";
 import { sendMessage } from "@/app/actions/shared";
 import type { Message } from "@/lib/types";
 
-const time = (value: string) => new Date(value).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+const time = (value: string) => new Date(value).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const meetingTime = (value: string) => new Date(value).toLocaleString("en-IN", { weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" });
 const hasEnded = (when: string, minutes: number) => new Date(when).getTime() + minutes * 60_000 < Date.now();
 const size = (b: number) => (b > 1_000_000 ? `${(b / 1_000_000).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1000))} KB`);

@@ -3,10 +3,19 @@ export const money = (value: number) => `₹${Math.round(value || 0).toLocaleStr
 export const initials = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("");
 
+/**
+ * All dates are shown in India time. Servers (e.g. Vercel) run in UTC while browsers run in local time, so
+ * formatting without a fixed zone renders different text on each side and breaks React hydration.
+ */
+export const TIME_ZONE = "Asia/Kolkata";
+
+/** Current hour (0–23) in India time — for greetings. */
+export const hourNow = () => Number(new Intl.DateTimeFormat("en-IN", { hour: "numeric", hourCycle: "h23", timeZone: TIME_ZONE }).format(new Date()));
+
 export function shortDate(value: string) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return date.toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: TIME_ZONE });
 }
 
 export function timeAgo(value: string) {

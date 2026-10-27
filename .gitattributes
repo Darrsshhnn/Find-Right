@@ -144,3 +144,10 @@
 *.stl                filter=lfs diff=lfs merge=lfs -text
 *.nc                 filter=lfs diff=lfs merge=lfs -text
 *.mat                filter=lfs diff=lfs merge=lfs -text
+
+# ---------------------------------------------------------------------------
+# Website assets: plain git files, never LFS. Vercel (and most hosts) do not
+# download LFS objects by default, so LFS images would deploy as tiny pointer
+# files and show up broken.
+# ---------------------------------------------------------------------------
+public/** -filter -diff -merge -text
