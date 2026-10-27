@@ -2,7 +2,7 @@ import Link from "next/link";
 import Icon from "./Icon";
 import SaveHeart from "./SaveHeart";
 import { AiBadge, Avatar, Stars, VerifiedBadge } from "./ui";
-import { AVAILABILITY } from "@/lib/constants";
+import { AVAILABILITY, categoryImage } from "@/lib/constants";
 import { daysLeft, money, shortDate, timeAgo } from "@/lib/format";
 import { budgetLabel } from "@/lib/jobs";
 import type { ClientView, FreelancerView } from "@/lib/queries";
@@ -22,9 +22,12 @@ export function JobCard({ job, client, applicants, match, href, invited }: {
         </div>
         {match && <span className="match" title={match.reasons.join(" · ")}><Icon name="zap" size={13} /> {match.score}% match</span>}
       </div>
-      <div className="stack-sm">
-        <h3><Link href={href}>{job.title}</Link></h3>
-        <p className="clamp-2">{job.description}</p>
+      <div className="job-head">
+        <img className="job-thumb" src={categoryImage(job.category)} alt="" loading="lazy" />
+        <div className="stack-sm" style={{ minWidth: 0 }}>
+          <h3><Link href={href}>{job.title}</Link></h3>
+          <p className="clamp-2">{job.description}</p>
+        </div>
       </div>
       {match && match.reasons.length > 0 && <div className="match-reasons">{match.reasons.slice(0, 3).map((r) => <span key={r}>{r}</span>)}</div>}
       <div className="meta">
@@ -88,7 +91,7 @@ export function FreelancerCard({ f, saved, actions, match, heart = true }: { f: 
 
 export function PortfolioCard({ item, href, children }: { item: PortfolioItem; href?: string; children?: React.ReactNode }) {
   const isLink = !item.image && /^https?:\/\//.test(item.description);
-  const cover = item.image ? <img className="thumb" src={item.image} alt={item.title} loading="lazy" /> : <div className="thumb"><Icon name={isLink ? "link" : "image"} size={32} /></div>;
+  const cover = <img className="thumb" src={item.image || categoryImage(item.category)} alt={item.title} loading="lazy" />;
   return (
     <article className="card portfolio-card">
       <div className="thumb-wrap">

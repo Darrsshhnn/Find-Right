@@ -1,3 +1,4 @@
+import TimelineSelect from "@/components/TimelineSelect";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -7,7 +8,7 @@ import { ReviewCard } from "@/components/cards";
 import { Avatar, ProposalStatusBadge, Rating, VerifiedBadge } from "@/components/ui";
 import { declineInvitation, submitProposal, withdrawProposal } from "@/app/actions/freelancer";
 import { requireUser } from "@/lib/auth";
-import { AI_LEVELS } from "@/lib/constants";
+import { AI_LEVELS, categoryImage } from "@/lib/constants";
 import { db } from "@/lib/db";
 import { daysLeft, money, shortDate, timeAgo } from "@/lib/format";
 import JobBrief from "@/components/JobBrief";
@@ -75,7 +76,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
                     {f.profile.portfolio.map((p) => (
                       <label className="option" key={p.id} style={{ gridTemplateColumns: "56px 1fr", alignItems: "center", gap: 8 }}>
                         <input type="checkbox" name="samples" value={p.id} defaultChecked={p.category === job.category} />
-                        {p.image ? <img src={p.image} alt="" style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 6 }} /> : <span className="avatar avatar-sm avatar-square"><Icon name="image" size={14} /></span>}
+                        <img src={p.image || categoryImage(p.category)} alt="" style={{ width: 56, height: 42, objectFit: "cover", borderRadius: 6 }} />
                         <span><b style={{ fontSize: 13 }}>{p.title}</b><br /><small>{p.source === "platform" ? "Client-verified · " : ""}{p.category}</small></span>
                       </label>
                     ))}
@@ -84,7 +85,7 @@ export default async function JobDetail({ params }: { params: Promise<{ id: stri
               </div>
               <div className="form-grid">
                 <label className="field">Your price (₹)<input type="number" name="amount" min="1" defaultValue={Math.min(jobTotal(job), Math.max(f.profile.hourlyRate * 20, Math.round(jobTotal(job) * 0.9)))} /><small>Client budget: {budgetLabel(job)}</small></label>
-                <label className="field">Delivery timeline<input name="timeline" placeholder="e.g. 3 weeks" defaultValue={job.duration} /></label>
+                <TimelineSelect suggested={job.duration} />
                 <label className="field">Extra revision rate (₹/round)<input type="number" min="0" name="extraRevisionRate" defaultValue={job.extraRevisionRate ?? Math.round(f.profile.hourlyRate * 1.5)} /><small>Charged only if the client adds rounds beyond the {job.revisions} included.</small></label>
                 <label className="field">AI use on this job<select name="ai" defaultValue={f.profile.ai[job.category] ?? "No AI"}>{AI_LEVELS.map((a) => <option key={a.value} value={a.value}>{a.value}</option>)}</select><small>Pre-filled from your disclosure for {job.category}.</small></label>
               </div>

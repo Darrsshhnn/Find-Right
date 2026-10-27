@@ -14,9 +14,50 @@ export function Logo({ href = "/" }: { href?: string }) {
   );
 }
 
+const AVATAR_BG = [["#efe3ff", "#d9bcff"], ["#ffe7d6", "#ffc9a3"], ["#dff5ec", "#a9e5cc"], ["#e2efff", "#b3d1ff"], ["#fff1c9", "#ffdc7a"], ["#ffe1ea", "#ffb3c8"]];
+const SKIN = ["#f2c7a5", "#e0a882", "#c98d66", "#a86f4c", "#8a5638"];
+const HAIR = ["#1f1a24", "#3b2a20", "#5a3a22", "#2b2b3a", "#7a4a2a"];
+const SHIRT = ["#8a38f5", "#130b1e", "#10b981", "#f59e0b", "#3b82f6", "#e5484d"];
+
+function hash(text: string) {
+  let h = 2166136261;
+  for (let i = 0; i < text.length; i++) h = Math.imul(h ^ text.charCodeAt(i), 16777619);
+  return h >>> 0;
+}
+
+/** Deterministic illustrated portrait (no photo needed) — same name, same avatar everywhere. */
+function AvatarArt({ name }: { name: string }) {
+  const h = hash(name);
+  const [bg1, bg2] = AVATAR_BG[h % AVATAR_BG.length]!;
+  const skin = SKIN[(h >> 3) % SKIN.length]!;
+  const hair = HAIR[(h >> 6) % HAIR.length]!;
+  const shirt = SHIRT[(h >> 9) % SHIRT.length]!;
+  const style = (h >> 12) % 4;
+  const id = `av${h.toString(36)}`;
+  return (
+    <svg viewBox="0 0 64 64" width="100%" height="100%" aria-hidden="true">
+      <defs><linearGradient id={id} x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor={bg1} /><stop offset="1" stopColor={bg2} /></linearGradient></defs>
+      <rect width="64" height="64" fill={`url(#${id})`} />
+      {style === 1 && <path d="M17 30c0-11 7-18 15-18s15 7 15 18v18H17z" fill={hair} />}
+      <path d="M9 64c1.5-12 10.5-19 23-19s21.5 7 23 19z" fill={shirt} />
+      <rect x="27.5" y="36" width="9" height="10" rx="4" fill={skin} />
+      <circle cx="32" cy="28" r="11.5" fill={skin} />
+      {style === 0 && <path d="M20.5 27c0-8 5-13.5 11.5-13.5S43.5 19 43.5 27c-2-4.5-6.5-6.5-11.5-6.5S22.5 22.5 20.5 27z" fill={hair} />}
+      {style === 1 && <path d="M20.5 28c0-8.5 5-14.5 11.5-14.5S43.5 19.5 43.5 28c-3-6-8-7-11.5-7s-8.5 1-11.5 7z" fill={hair} />}
+      {style === 2 && <><circle cx="32" cy="12.5" r="5.5" fill={hair} /><path d="M20.5 27c0-8 5-13 11.5-13S43.5 19 43.5 27c-3-5-7-6-11.5-6S23.5 22 20.5 27z" fill={hair} /></>}
+      {style === 3 && <path d="M20 29c-1-9 4.5-16 12-16s13 6 12 16c-1.5-3-3-5-5-6-3 2-9 2.5-14 1-2 1-4 2.5-5 5z" fill={hair} />}
+      <circle cx="28" cy="29" r="1.3" fill="#2a2030" /><circle cx="36" cy="29" r="1.3" fill="#2a2030" />
+      <path d="M29 33.5c1.8 1.4 4.2 1.4 6 0" stroke="#2a2030" strokeWidth="1.3" fill="none" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function Avatar({ name, src, size = "", square = false }: { name: string; src?: string; size?: "" | "sm" | "lg" | "xl"; square?: boolean }) {
   const cls = `avatar${size ? ` avatar-${size}` : ""}${square ? " avatar-square" : ""}`;
-  return src ? <img className={cls} src={src} alt="" /> : <span className={cls} aria-hidden="true">{initials(name)}</span>;
+  if (src) return <img className={cls} src={src} alt="" />;
+  // Companies (square tiles) get a gradient monogram; people get an illustrated portrait.
+  if (square) return <span className={`${cls} avatar-mono`} aria-hidden="true">{initials(name)}</span>;
+  return <span className={`${cls} avatar-art`} aria-hidden="true"><AvatarArt name={name} /></span>;
 }
 
 export function Stars({ value, size = 14 }: { value: number; size?: number }) {

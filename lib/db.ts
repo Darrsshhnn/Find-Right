@@ -4,7 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
 import type { DB } from "./types";
-import { createSeed } from "./seed";
+import { DEMO_LINKS, createSeed } from "./seed";
 
 /**
  * Where the JSON store lives. Serverless hosts (Vercel) have a read-only project folder, so there the
@@ -31,8 +31,18 @@ function load(): DB {
     db = createSeed();
     persist(db);
   }
+  if (migrate(db)) persist(db);
   store.__findrightDb = db;
   return db;
+}
+
+/** Backfill fields added after a store was created. Returns true when something changed. */
+function migrate(db: DB) {
+  let changed = false;
+  for (const f of db.freelancers) {
+    if (f.links === undefined) { f.links = DEMO_LINKS[f.userId]?.map((l) => ({ ...l })) ?? []; changed = true; }
+  }
+  return changed;
 }
 
 function persist(db: DB) {

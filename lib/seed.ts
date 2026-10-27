@@ -6,6 +6,14 @@ const day = 86_400_000;
 const ago = (days: number, hours = 0) => new Date(Date.now() - days * day - hours * 3_600_000).toISOString();
 const ahead = (days: number) => new Date(Date.now() + days * day).toISOString().slice(0, 10);
 
+/** Example external portfolio links for the demo freelancers (reserved .example domains — replace with real ones). */
+export const DEMO_LINKS: Record<string, { id: string; label: string; url: string }[]> = {
+  u_umang: [{ id: "pl_u1", label: "Personal portfolio", url: "https://umang.portfolio.example/" }, { id: "pl_u2", label: "Case studies", url: "https://umang.portfolio.example/case-studies" }],
+  u_darshan: [{ id: "pl_d1", label: "Personal portfolio", url: "https://darshan.portfolio.example/" }],
+  u_yashraj: [{ id: "pl_y1", label: "UX research notes", url: "https://yashraj.portfolio.example/research" }],
+  u_riya: [{ id: "pl_r1", label: "Motion reel", url: "https://riya.portfolio.example/reel" }],
+};
+
 export function createSeed(): DB {
   const passwordHash = hashPassword(DEMO_PASSWORD);
   const user = (id: string, role: User["role"], name: string, email: string, avatar?: string, createdDaysAgo = 300): User => ({
@@ -47,7 +55,7 @@ export function createSeed(): DB {
   const freelancer = (p: Partial<FreelancerProfile> & Pick<FreelancerProfile, "userId">): FreelancerProfile => ({
     headline: "", location: "Ahmedabad, India", bio: "", level: "Intermediate", years: 2, disciplines: [], skills: [], tools: [],
     languages: ["English", "Hindi", "Gujarati"], education: "", hourlyRate: 1500, availability: "now", ai: {}, aiProcess: "",
-    portfolio: [], experience: [], settings: { publicProfile: true, projectAlerts: true, messageAlerts: true }, ...p,
+    portfolio: [], experience: [], links: DEMO_LINKS[p.userId!]?.map((l) => ({ ...l })) ?? [], settings: { publicProfile: true, projectAlerts: true, messageAlerts: true }, ...p,
   });
 
   const freelancers: FreelancerProfile[] = [

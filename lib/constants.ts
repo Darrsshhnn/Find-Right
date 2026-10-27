@@ -19,6 +19,9 @@ export const SKILLS = [
   "Figma", "Adobe Illustrator", "Photoshop", "After Effects", "Premiere Pro", "User Research", "Prototyping", "Print Design",
 ];
 
+/** Cover image for a category, used wherever a job or portfolio piece has no image of its own. */
+export const categoryImage = (category: string) => DISCIPLINES.find((d) => d.name === category)?.image ?? "/assets/1f943.png";
+
 export const LEVELS: { value: Level; label: string; detail: string }[] = [
   { value: "Fresher", label: "Fresher / Entry", detail: "New talent, fresh ideas" },
   { value: "Intermediate", label: "Intermediate", detail: "Proven project experience" },

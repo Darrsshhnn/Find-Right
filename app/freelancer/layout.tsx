@@ -24,6 +24,7 @@ export default async function FreelancerLayout({ children }: { children: React.R
         { href: "/freelancer/proposals", icon: "send", label: "Proposals" },
         { href: "/freelancer/projects", icon: "folder", label: "Projects", count: todo },
         { href: "/freelancer/messages", icon: "chat", label: "Chat" },
+        { href: "/freelancer/analytics", icon: "chart", label: "Analytics", short: "Stats" },
       ]}
       bottomNav={[
         { href: "/freelancer/profile", icon: "user", label: "Profile" },
@@ -31,6 +32,7 @@ export default async function FreelancerLayout({ children }: { children: React.R
       ]}
       menu={[
         { href: "/freelancer/profile", label: "Profile & portfolio", icon: "user" },
+        { href: "/freelancer/analytics", label: "Analytics", icon: "chart" },
         { href: "/freelancer/earnings", label: "Earnings & payouts", icon: "wallet" },
         { href: "/freelancer/progression", label: "Trust & progression", icon: "award" },
         { href: "/freelancer/settings", label: "Settings", icon: "settings" },

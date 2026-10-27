@@ -2,11 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "./Icon";
-import { Stars } from "./ui";
+import { Avatar, Stars } from "./ui";
 
 export type Testimonial = { name: string; role: string; rating: number; text: string };
 
-const initials = (name: string) => name.split(" ").map((p) => p[0]).slice(0, 2).join("");
 
 export default function ReviewSlider({ items }: { items: Testimonial[] }) {
   const track = useRef<HTMLDivElement>(null);
@@ -60,7 +59,7 @@ export default function ReviewSlider({ items }: { items: Testimonial[] }) {
               <blockquote>“{r.text}”</blockquote>
             </div>
             <div className="row">
-              <span className="avatar avatar-sm" aria-hidden="true">{initials(r.name)}</span>
+              <Avatar name={r.name} size="sm" />
               <div><b>{r.name}</b><div className="small muted">{r.role}</div></div>
             </div>
           </article>

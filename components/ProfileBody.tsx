@@ -70,7 +70,10 @@ export default function ProfileBody({ f, portfolioActions, reviewPage = 1, pageH
 
       <section className="stack">
         <div className="row-between"><h2>Portfolio</h2><span className="small muted">{portfolio.filter((p) => p.source === "platform").length} client-verified · {portfolio.length} total</span></div>
-        {(f.profile.links ?? []).length > 0 && <PortfolioLinks links={f.profile.links!} />}
+        <div className="card-flat stack-sm">
+          <div className="row-between"><b className="row" style={{ gap: 8 }}><Icon name="globe" size={16} /> Portfolio links</b><span className="small muted">Work hosted outside FindRight</span></div>
+          {(f.profile.links ?? []).length > 0 ? <PortfolioLinks links={f.profile.links!} /> : <p className="small muted">{f.user.name.split(" ")[0]} hasn&apos;t shared external portfolio links yet.</p>}
+        </div>
         {portfolio.length ? <div className="grid-2 portfolio-grid">{portfolio.map((p) => <PortfolioCard key={p.id} item={p} href={workHref?.(p.id)}>{portfolioActions?.(p.id)}</PortfolioCard>)}</div> : <p className="muted">No portfolio pieces yet.</p>}
       </section>
 

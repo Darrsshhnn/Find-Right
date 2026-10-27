@@ -4,9 +4,10 @@ import Icon from "@/components/Icon";
 import LogoIntro from "@/components/LogoIntro";
 import PublicHeader from "@/components/PublicHeader";
 import ReviewSlider, { type Testimonial } from "@/components/ReviewSlider";
-import { AnimatedBackground, Logo } from "@/components/ui";
+import { AnimatedBackground, Avatar, Logo } from "@/components/ui";
 
 const TEAM = ["Darshan", "Umang", "Prachi", "Yashraj", "Vrushti"];
+const TEAM_PHOTOS: Record<string, string> = { Darshan: "/assets/bff29.png", Umang: "/assets/3f8c7.png", Yashraj: "/assets/f5bf1.png" };
 
 // Placeholder testimonials drawn from our user-research interviews — replace with live reviews before launch.
 const TESTIMONIALS: Testimonial[] = [
@@ -77,7 +78,7 @@ export default function Landing() {
             <div className="section-title center"><span className="eyebrow">Reviews</span><h2>Loved by clients and freelancers</h2></div>
             <ReviewSlider items={TESTIMONIALS} />
             <div className="built-by">
-              <span className="avatar-stack">{TEAM.map((n) => <span key={n} className="avatar" aria-hidden="true">{n[0]}</span>)}</span>
+              <span className="avatar-stack">{TEAM.map((n) => <Avatar key={n} name={n} src={TEAM_PHOTOS[n]} />)}</span>
               <span className="small">Built by <b>{TEAM.slice(0, -1).join(", ")} &amp; {TEAM.at(-1)}</b></span>
             </div>
           </div>
